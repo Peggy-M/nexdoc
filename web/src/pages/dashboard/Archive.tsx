@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Database, 
   Search, 
@@ -14,45 +15,115 @@ import {
 import { cn } from '@/lib/utils';
 import { HolographicCard } from '@/components/HolographicCard';
 
-const archiveStats = [
-  { name: '总存储量', value: '128.5 GB', icon: Database },
-  { name: '合同数量', value: '1,256', icon: FileText },
-  { name: '本月新增', value: '86', icon: Calendar },
-  { name: '平均保存', value: '2.3 年', icon: Clock },
-];
-
-const folders = [
-  { id: 1, name: '技术服务合同', count: 45, size: '23.5 MB' },
-  { id: 2, name: '采购协议', count: 32, size: '18.2 MB' },
-  { id: 3, name: '劳动合同', count: 128, size: '45.6 MB' },
-  { id: 4, name: '保密协议', count: 56, size: '12.3 MB' },
-  { id: 5, name: '租赁合同', count: 18, size: '8.9 MB' },
-];
-
-const archivedContracts = [
-  { id: 1, name: '技术服务合同-2023-089', folder: '技术服务合同', date: '2023-12-15', size: '2.3 MB', tags: ['已完成', '年度'] },
-  { id: 2, name: '采购协议-供应商B-2023', folder: '采购协议', date: '2023-11-20', size: '1.8 MB', tags: ['已完成'] },
-  { id: 3, name: '劳动合同-批量-2023-Q4', folder: '劳动合同', date: '2023-10-01', size: '15.6 MB', tags: ['批量', 'Q4'] },
-  { id: 4, name: '保密协议-合作方C', folder: '保密协议', date: '2023-09-15', size: '1.2 MB', tags: ['已到期'] },
-  { id: 5, name: '办公室租赁合同-2023', folder: '租赁合同', date: '2023-08-01', size: '3.5 MB', tags: ['长期'] },
-];
-
-const tags = ['全部', '已完成', '年度', '批量', 'Q4', '已到期', '长期'];
-
 export const Archive: React.FC = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState('全部');
   const [selectedFolder, setSelectedFolder] = useState<number | null>(null);
-  const [contracts, setContracts] = useState(archivedContracts);
+  
+  // Data States
+  const [stats, setStats] = useState([
+    { name: '总存储量', value: '0 B', icon: Database },
+    { name: '合同数量', value: '0', icon: FileText },
+    { name: '本月新增', value: '0', icon: Calendar },
+    { name: '平均保存', value: '0 年', icon: Clock },
+  ]);
+  
+  const [folders, setFolders] = useState<any[]>([]);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [tags, setTags] = useState<string[]>(['全部']);
+  
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleDownload = (contractName: string) => {
-    alert(`下载合同: ${contractName}`);
+  const fetchArchiveData = async () => {
+    try {
+      const token = localStorage.getItem('NexDoc_token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await fetch('/api/v1/archive/', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update Stats
+        setStats([
+          { name: '总存储量', value: data.stats[0].value, icon: Database },
+          { name: '合同数量', value: data.stats[1].value, icon: FileText },
+          { name: '本月新增', value: data.stats[2].value, icon: Calendar },
+          { name: '平均保存', value: data.stats[3].value, icon: Clock },
+        ]);
+        
+        setFolders(data.folders);
+        setContracts(data.contracts);
+        setTags(data.tags);
+      }
+    } catch (error) {
+      console.error('Failed to fetch archive data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setContracts(prev => prev.filter(c => c.id !== id));
-    setShowDeleteConfirm(null);
+  useEffect(() => {
+    fetchArchiveData();
+  }, []);
+
+  const handleDownload = async (contractId: number, contractName: string) => {
+    try {
+        const token = localStorage.getItem('NexDoc_token');
+        if (!token) {
+            navigate('/login');
+            return;
+        }
+
+        const response = await fetch(`/api/v1/contracts/${contractId}/download`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = contractName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } else {
+            console.error('Download failed');
+        }
+    } catch (error) {
+        console.error('Download error:', error);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+        const token = localStorage.getItem('NexDoc_token');
+        await fetch(`/api/v1/contracts/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        // Refresh data
+        fetchArchiveData();
+        setShowDeleteConfirm(null);
+    } catch (error) {
+        console.error('Delete error:', error);
+    }
   };
 
   const filteredContracts = contracts.filter(contract => {
@@ -74,7 +145,7 @@ export const Archive: React.FC = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {archiveStats.map((stat, index) => {
+        {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <HolographicCard key={index} className="p-5">
@@ -211,7 +282,7 @@ export const Archive: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button 
-                          onClick={() => handleDownload(contract.name)}
+                          onClick={() => handleDownload(contract.id, contract.name)}
                           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                           title="下载"
                         >

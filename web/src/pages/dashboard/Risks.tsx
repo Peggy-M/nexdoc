@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   AlertTriangle, 
   Search, 
@@ -11,15 +12,17 @@ import { HolographicCard } from '@/components/HolographicCard';
 import { MagneticButton } from '@/components/MagneticButton';
 import { RiskDetailModal } from '@/components/RiskDetailModal';
 
-const riskStats = [
-  { name: '待处理', value: 23, change: -5, color: 'red' },
-  { name: '处理中', value: 8, change: 2, color: 'orange' },
-  { name: '已解决', value: 156, change: 12, color: 'green' },
-  { name: '本月新增', value: 18, change: -3, color: 'blue' },
-];
+interface RiskStat {
+  name: string;
+  value: number;
+  change: number;
+  color: string;
+}
 
-const risks: Array<{
-  id: number;
+interface Risk {
+  id: string | number; // Backend might send string combined ID
+  original_id?: number;
+  contract_id?: number;
   title: string;
   contract: string;
   type: 'high' | 'medium' | 'low';
@@ -27,78 +30,65 @@ const risks: Array<{
   status: 'pending' | 'processing' | 'resolved';
   date: string;
   aiConfidence: number;
-}> = [
-  {
-    id: 1,
-    title: '违约金比例过高',
-    contract: '技术服务合同-2024-001',
-    type: 'high',
-    category: '违约责任',
-    status: 'pending',
-    date: '2024-01-15',
-    aiConfidence: 98,
-  },
-  {
-    id: 2,
-    title: '争议解决条款缺失',
-    contract: '保密协议-合作方B',
-    type: 'medium',
-    category: '争议解决',
-    status: 'processing',
-    date: '2024-01-14',
-    aiConfidence: 95,
-  },
-  {
-    id: 3,
-    title: '知识产权归属不明',
-    contract: '技术服务合同-2024-001',
-    type: 'medium',
-    category: '知识产权',
-    status: 'pending',
-    date: '2024-01-13',
-    aiConfidence: 92,
-  },
-  {
-    id: 4,
-    title: '通知送达方式不明确',
-    contract: '采购协议-供应商A',
-    type: 'low',
-    category: '通知条款',
-    status: 'resolved',
-    date: '2024-01-12',
-    aiConfidence: 88,
-  },
-  {
-    id: 5,
-    title: '保密期限约定不合理',
-    contract: '保密协议-合作方B',
-    type: 'medium',
-    category: '保密条款',
-    status: 'pending',
-    date: '2024-01-10',
-    aiConfidence: 90,
-  },
-  {
-    id: 6,
-    title: '付款条件过于苛刻',
-    contract: '采购协议-供应商A',
-    type: 'high',
-    category: '付款条款',
-    status: 'processing',
-    date: '2024-01-08',
-    aiConfidence: 96,
-  },
-];
+  description?: string;
+  suggestion?: string;
+  clause?: string;
+}
 
-const categories = ['全部', '违约责任', '争议解决', '知识产权', '保密条款', '付款条款', '通知条款'];
+const categories = ['全部', '违约责任', '争议解决', '知识产权', '保密条款', '付款条款', '通知条款', '其他'];
 
 export const Risks: React.FC = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('全部');
   const [selectedType, setSelectedType] = useState<string>('all');
-  const [selectedRisk, setSelectedRisk] = useState<typeof risks[0] | null>(null);
+  const [selectedRisk, setSelectedRisk] = useState<Risk | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [risksList, setRisksList] = useState(risks);
+  
+  const [risksList, setRisksList] = useState<Risk[]>([]);
+  const [riskStats, setRiskStats] = useState<RiskStat[]>([
+    { name: '待处理', value: 0, change: 0, color: 'red' },
+    { name: '处理中', value: 0, change: 0, color: 'orange' },
+    { name: '已解决', value: 0, change: 0, color: 'green' },
+    { name: '本月新增', value: 0, change: 0, color: 'blue' },
+  ]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRisks();
+  }, []);
+
+  const fetchRisks = async () => {
+    try {
+      const token = localStorage.getItem('NexDoc_token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await fetch('/api/v1/risks/', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+           navigate('/login');
+           return;
+        }
+        throw new Error('Failed to fetch risks');
+      }
+
+      const data = await response.json();
+      setRisksList(data.risks);
+      setRiskStats(data.stats);
+    } catch (error) {
+      console.error('Error fetching risks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredRisks = risksList.filter(risk => {
     const matchesSearch = risk.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -343,7 +333,25 @@ export const Risks: React.FC = () => {
         risk={selectedRisk}
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
-        onProcess={(riskId) => {
+        onProcess={async (riskId) => {
+          // Parse composite ID: "contractId_riskId"
+          if (typeof riskId === 'string' && riskId.includes('_')) {
+             const [contractId, realRiskId] = riskId.split('_');
+             try {
+                const token = localStorage.getItem('NexDoc_token');
+                await fetch(`/api/v1/risks/${contractId}/${realRiskId}/status`, {
+                   method: 'PATCH',
+                   headers: {
+                      'Authorization': `Bearer ${token}`,
+                      'Content-Type': 'application/json'
+                   },
+                   body: JSON.stringify({ status: 'resolved' })
+                });
+             } catch (e) {
+                console.error("Failed to update status", e);
+             }
+          }
+          
           setRisksList(prev => prev.map(r => 
             r.id === riskId ? { ...r, status: 'resolved' } : r
           ));

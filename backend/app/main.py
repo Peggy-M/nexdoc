@@ -8,7 +8,7 @@ load_dotenv()
 
 from app.api.api import api_router
 from app.core.database import engine, Base
-from app.models import user, contract  # Import models to register them
+from app.models import user, contract, activity  # Import models to register them
 
 # Create tables
 Base.metadata.create_all(bind=engine)

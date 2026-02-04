@@ -12,6 +12,7 @@ from app.models.contract import Contract
 from app.schemas.contract import UploadResponse, ContractAnalysisResponse, AnalysisResult, Contract as ContractSchema
 from app.services.ai_service import AIService
 from app.services.export_service import ExportService
+from app.models.activity import Activity
 
 router = APIRouter()
 ai_service = AIService()
@@ -114,6 +115,19 @@ async def upload_contract(
     db.commit()
     db.refresh(db_contract)
     
+    # Add Activity Log
+    try:
+        activity = Activity(
+            user_id=current_user.id,
+            user_name=current_user.full_name or current_user.email.split('@')[0],
+            action="上传了",
+            target=db_contract.name
+        )
+        db.add(activity)
+        db.commit()
+    except Exception as e:
+        print(f"Failed to log activity: {e}")
+
     # Trigger background analysis
     background_tasks.add_task(process_contract_background, db_contract.id, file_location, db)
     
@@ -224,5 +238,18 @@ async def delete_contract(
             
     db.delete(contract)
     db.commit()
+
+    # Log Activity
+    try:
+        activity = Activity(
+            user_id=current_user.id,
+            user_name=current_user.full_name or current_user.email.split('@')[0],
+            action="删除了",
+            target=contract.name
+        )
+        db.add(activity)
+        db.commit()
+    except Exception as e:
+        print(f"Failed to log activity: {e}")
     
     return {"message": "Contract deleted successfully"}

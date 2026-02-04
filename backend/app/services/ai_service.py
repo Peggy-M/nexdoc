@@ -88,6 +88,7 @@ class AIService:
         - id: 整数序号
         - title: 风险标题 (简短)
         - type: 风险等级 (只能是 "high", "medium", "low" 之一)
+        - category: 风险类别 (例如: "违约责任", "争议解决", "知识产权", "保密条款", "付款条款", "通知条款", "其他")
         - description: 详细的风险描述
         - suggestion: 修改建议
         - clause: 相关的原文条款片段 (如果找不到原文，留空)

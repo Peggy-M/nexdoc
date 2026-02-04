@@ -4,7 +4,7 @@ import { MagneticButton } from './MagneticButton';
 import { cn } from '@/lib/utils';
 
 interface Risk {
-  id: number;
+  id: string | number;
   title: string;
   contract: string;
   type: 'high' | 'medium' | 'low';
@@ -21,7 +21,7 @@ interface RiskDetailModalProps {
   risk: Risk | null;
   isOpen: boolean;
   onClose: () => void;
-  onProcess?: (riskId: number) => void;
+  onProcess?: (riskId: string | number) => void;
 }
 
 export const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ 

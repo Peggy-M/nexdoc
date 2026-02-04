@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Users, 
   UserPlus, 
@@ -12,80 +12,37 @@ import {
 } from 'lucide-react';
 import { HolographicCard } from '@/components/HolographicCard';
 import { MagneticButton } from '@/components/MagneticButton';
+import { useNavigate } from 'react-router-dom';
 
-const teamStats = [
-  { name: '团队成员', value: 12, icon: Users, color: 'blue' },
-  { name: '待审核', value: 3, icon: Clock, color: 'orange' },
-  { name: '管理员', value: 2, icon: Shield, color: 'purple' },
-  { name: '本月活跃', value: 10, icon: CheckCircle, color: 'green' },
-];
+interface Member {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  department: string;
+  status: string;
+  contracts: number;
+  lastActive: string;
+  avatar: string | null;
+}
 
-const teamMembers = [
-  {
-    id: 1,
-    name: '张明',
-    email: 'zhangming@company.com',
-    role: 'admin',
-    department: '法务部',
-    status: 'active',
-    contracts: 45,
-    lastActive: '2 分钟前',
-    avatar: null,
-  },
-  {
-    id: 2,
-    name: '李华',
-    email: 'lihua@company.com',
-    role: 'member',
-    department: '法务部',
-    status: 'active',
-    contracts: 32,
-    lastActive: '1 小时前',
-    avatar: null,
-  },
-  {
-    id: 3,
-    name: '王芳',
-    email: 'wangfang@company.com',
-    role: 'member',
-    department: '合规部',
-    status: 'active',
-    contracts: 28,
-    lastActive: '3 小时前',
-    avatar: null,
-  },
-  {
-    id: 4,
-    name: '陈伟',
-    email: 'chenwei@company.com',
-    role: 'viewer',
-    department: '业务部',
-    status: 'inactive',
-    contracts: 12,
-    lastActive: '2 天前',
-    avatar: null,
-  },
-  {
-    id: 5,
-    name: '刘洋',
-    email: 'liuyang@company.com',
-    role: 'pending',
-    department: '法务部',
-    status: 'pending',
-    contracts: 0,
-    lastActive: '待激活',
-    avatar: null,
-  },
-];
+interface Activity {
+  id: number;
+  user: string;
+  action: string;
+  target: string;
+  time: string;
+}
 
-const activities = [
-  { id: 1, user: '张明', action: '审核了', target: '技术服务合同-2024-001', time: '5 分钟前' },
-  { id: 2, user: '李华', action: '上传了', target: '采购协议-供应商A', time: '1 小时前' },
-  { id: 3, user: '王芳', action: '修复了', target: '保密协议中的风险条款', time: '3 小时前' },
-  { id: 4, user: '系统', action: '自动检测到', target: '3 个新风险', time: '5 小时前' },
-];
+interface Stat {
+  name: string;
+  value: number;
+  color: string;
+  icon?: any;
+}
 
 export const Team: React.FC = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -93,7 +50,86 @@ export const Team: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
 
-  const filteredMembers = teamMembers.filter(member =>
+  const [members, setMembers] = useState<Member[]>([]);
+  const [stats, setStats] = useState<Stat[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    const token = localStorage.getItem('NexDoc_token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const headers = { 'Authorization': `Bearer ${token}` };
+
+      // Fetch Members
+      const membersRes = await fetch('/api/v1/team/members', { headers });
+      const membersData = await membersRes.json();
+      setMembers(membersData);
+
+      // Fetch Stats
+      const statsRes = await fetch('/api/v1/team/stats', { headers });
+      const statsData = await statsRes.json();
+      // Map icons to stats
+      const iconMap: Record<string, any> = {
+        '团队成员': Users,
+        '待审核': Clock,
+        '管理员': Shield,
+        '本月活跃': CheckCircle
+      };
+      setStats(statsData.map((s: any) => ({ ...s, icon: iconMap[s.name] || Users })));
+
+      // Fetch Activities
+      const activitiesRes = await fetch('/api/v1/team/activities', { headers });
+      const activitiesData = await activitiesRes.json();
+      setActivities(activitiesData);
+
+    } catch (error) {
+      console.error("Failed to fetch team data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInvite = async () => {
+    if (!inviteEmail) return;
+    setIsSending(true);
+    const token = localStorage.getItem('NexDoc_token');
+    
+    try {
+      const response = await fetch('/api/v1/team/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole })
+      });
+      
+      if (!response.ok) {
+         const err = await response.json();
+         alert(err.detail || "Invite failed");
+         setIsSending(false);
+         return;
+      }
+
+      setInviteSuccess(true);
+      fetchData(); // Refresh data
+    } catch (e) {
+      console.error(e);
+      alert("Invite failed");
+      setIsSending(false);
+    }
+  };
+
+  const filteredMembers = members.filter(member =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -156,8 +192,8 @@ export const Team: React.FC = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {teamStats.map((stat, index) => {
-          const Icon = stat.icon;
+        {stats.map((stat, index) => {
+          const Icon = stat.icon || Users;
           return (
             <HolographicCard key={index} className="p-5">
               <div className="flex items-center justify-between">
@@ -319,13 +355,7 @@ export const Team: React.FC = () => {
                     <MagneticButton 
                       variant="primary" 
                       className="flex-1"
-                      onClick={async () => {
-                        if (!inviteEmail) return;
-                        setIsSending(true);
-                        await new Promise(resolve => setTimeout(resolve, 1500));
-                        setIsSending(false);
-                        setInviteSuccess(true);
-                      }}
+                      onClick={handleInvite}
                       disabled={isSending || !inviteEmail}
                     >
                       {isSending ? '发送中...' : '发送邀请'}
