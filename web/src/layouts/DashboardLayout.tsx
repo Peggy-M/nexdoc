@@ -36,7 +36,7 @@ export const DashboardLayout: React.FC = () => {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const userData = localStorage.getItem('lexguard_user');
+    const userData = localStorage.getItem('NexDoc_user');
     if (!userData) {
       navigate('/login');
       return;
@@ -45,7 +45,8 @@ export const DashboardLayout: React.FC = () => {
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem('lexguard_user');
+    localStorage.removeItem('NexDoc_user');
+    localStorage.removeItem('NexDoc_token');
     navigate('/login');
   };
 
@@ -68,7 +69,7 @@ export const DashboardLayout: React.FC = () => {
             </div>
             {isSidebarOpen && (
               <span className="ml-3 text-lg font-bold text-white whitespace-nowrap">
-                LexGuard AI
+                NexDoc AI
               </span>
             )}
           </Link>

@@ -77,7 +77,7 @@ export const LandingPage: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-lime flex items-center justify-center">
                 <Shield className="w-6 h-6 text-charcoal" />
               </div>
-              <span className="text-xl font-bold text-charcoal">LexGuard AI</span>
+              <span className="text-xl font-bold text-charcoal">NexDoc AI</span>
             </a>
 
             {/* Desktop Navigation */}

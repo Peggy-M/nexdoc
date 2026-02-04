@@ -12,8 +12,8 @@ gsap.registerPlugin(ScrollTrigger);
 
 const faqs = [
   {
-    question: 'LexGuard AI 支持哪些文件格式？',
-    answer: 'LexGuard AI 支持 PDF、Word（.doc/.docx）、图片格式（JPG、PNG、TIFF）以及纯文本文件。我们的视觉 AI 技术可以保持文档的原版排版结构，确保"所见即所审"。',
+    question: 'NexDoc AI 支持哪些文件格式？',
+    answer: 'NexDoc AI 支持 PDF、Word（.doc/.docx）、图片格式（JPG、PNG、TIFF）以及纯文本文件。我们的视觉 AI 技术可以保持文档的原版排版结构，确保"所见即所审"。',
   },
   {
     question: '合同数据的安全性如何保障？',
@@ -21,11 +21,11 @@ const faqs = [
   },
   {
     question: 'AI 识别的准确率有多高？',
-    answer: '基于 DeepSeek-R1 推理引擎，LexGuard AI 的风险识别准确率达到 99.8%。我们的模型已在超过 500 万份合同上进行训练，并持续学习更新。',
+    answer: '基于 DeepSeek-R1 推理引擎，NexDoc AI 的风险识别准确率达到 99.8%。我们的模型已在超过 500 万份合同上进行训练，并持续学习更新。',
   },
   {
     question: '是否可以与现有系统集成？',
-    answer: '是的，LexGuard 提供完整的 RESTful API 和 Webhook 支持，可无缝集成到钉钉、飞书、企业微信以及 SAP、Oracle 等 ERP 系统中。',
+    answer: '是的，NexDoc 提供完整的 RESTful API 和 Webhook 支持，可无缝集成到钉钉、飞书、企业微信以及 SAP、Oracle 等 ERP 系统中。',
   },
   {
     question: '免费试用期多长？',
@@ -70,7 +70,7 @@ export const FAQ: React.FC = () => {
             常见问题
           </h2>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-            关于 LexGuard AI 的常见疑问解答
+            关于 NexDoc AI 的常见疑问解答
           </p>
         </div>
 

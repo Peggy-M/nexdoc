@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 
 export const Login: React.FC = () => {
@@ -11,24 +11,61 @@ export const Login: React.FC = () => {
     password: '',
     rememberMe: false,
   });
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // Simulate login API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Store login state
-    localStorage.setItem('lexguard_user', JSON.stringify({
-      email: formData.email,
-      name: '测试用户',
-      company: '测试公司',
-      avatar: null,
-    }));
-    
-    setIsLoading(false);
-    navigate('/dashboard');
+    try {
+      const params = new URLSearchParams();
+      params.append('username', formData.email);
+      params.append('password', formData.password);
+
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params,
+      });
+
+      if (!response.ok) {
+        throw new Error('邮箱或密码错误');
+      }
+
+      const data = await response.json();
+      const token = data.access_token;
+
+      // Get user info
+      const userResponse = await fetch('/api/v1/auth/users/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!userResponse.ok) {
+        throw new Error('获取用户信息失败');
+      }
+
+      const userData = await userResponse.json();
+
+      // Store login state
+      localStorage.setItem('NexDoc_token', token);
+      localStorage.setItem('NexDoc_user', JSON.stringify({
+        email: userData.email,
+        name: userData.full_name || '用户',
+        company: 'NexDoc',
+        avatar: null,
+      }));
+      
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message || '登录失败，请稍后重试');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,7 +91,7 @@ export const Login: React.FC = () => {
             <div className="w-14 h-14 rounded-2xl bg-lime flex items-center justify-center">
               <Shield className="w-8 h-8 text-charcoal" />
             </div>
-            <span className="text-2xl font-bold text-white">LexGuard AI</span>
+            <span className="text-2xl font-bold text-white">NexDoc AI</span>
           </div>
           <p className="text-gray-400">智能合同防御系统</p>
         </div>
@@ -62,7 +99,13 @@ export const Login: React.FC = () => {
         {/* Login Card */}
         <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8">
           <h1 className="text-2xl font-bold text-white mb-2">欢迎回来</h1>
-          <p className="text-gray-400 text-sm mb-6">登录您的账户继续使用 LexGuard AI</p>
+          <p className="text-gray-400 text-sm mb-6">登录您的账户继续使用 NexDoc AI</p>
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm mb-6">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
@@ -170,9 +213,9 @@ export const Login: React.FC = () => {
         {/* Footer */}
         <p className="text-center text-gray-400 text-sm mt-6">
           还没有账户？
-          <a href="/" className="text-lime hover:underline ml-1">
+          <Link to="/register" className="text-lime hover:underline ml-1">
             立即注册
-          </a>
+          </Link>
         </p>
       </div>
     </div>

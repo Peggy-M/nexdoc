@@ -45,3 +45,6 @@ coverage/
 *.suo
 *.ntvs*
 *.njsproj
+
+# pdf 文件
+*.pdf

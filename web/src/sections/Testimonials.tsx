@@ -7,14 +7,14 @@ gsap.registerPlugin(ScrollTrigger);
 
 const testimonials = [
   {
-    content: 'LexGuard AI 将我们的合同审查时间从平均 3 天缩短到 2 小时。AI 识别的风险点非常精准，大大提高了我们的工作效率。',
+    content: 'NexDoc AI 将我们的合同审查时间从平均 3 天缩短到 2 小时。AI 识别的风险点非常精准，大大提高了我们的工作效率。',
     author: '张明',
     title: '高级合伙人',
     company: '金杜律师事务所',
     rating: 5,
   },
   {
-    content: '作为一家快速发展的科技公司，我们需要处理大量合作协议。LexGuard 的自动化审查让我们能够专注于核心业务。',
+    content: '作为一家快速发展的科技公司，我们需要处理大量合作协议。NexDoc 的自动化审查让我们能够专注于核心业务。',
     author: '李华',
     title: '法务总监',
     company: '某独角兽科技公司',
@@ -108,7 +108,7 @@ export const Testimonials: React.FC = () => {
             客户评价
           </h2>
           <p className="text-lg text-gray-500">
-            听听使用 LexGuard AI 的法律团队怎么说
+            听听使用 NexDoc AI 的法律团队怎么说
           </p>
         </div>
 

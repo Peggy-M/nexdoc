@@ -70,6 +70,7 @@ export const UploadPage: React.FC = () => {
   const [analysisStep, setAnalysisStep] = useState<'upload' | 'analyzing' | 'results'>('upload');
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [selectedRisk, setSelectedRisk] = useState<AnalysisResult | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -117,6 +118,7 @@ export const UploadPage: React.FC = () => {
   const uploadFile = async (file: File, tempId: number) => {
     const formData = new FormData();
     formData.append('file', file);
+    const token = localStorage.getItem('NexDoc_token');
 
     try {
         // 模拟进度条动画（因为 fetch 不容易获取上传进度）
@@ -128,6 +130,9 @@ export const UploadPage: React.FC = () => {
 
         const response = await fetch('/api/v1/contracts/upload', {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
             body: formData,
         });
 
@@ -183,7 +188,12 @@ export const UploadPage: React.FC = () => {
             setAnalysisProgress(prev => prev < 90 ? prev + 5 : prev);
         }, 500);
 
-        const response = await fetch(`/api/v1/contracts/${targetFile.id}/analysis`);
+        const token = localStorage.getItem('NexDoc_token');
+        const response = await fetch(`/api/v1/contracts/${targetFile.id}/analysis`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         
         clearInterval(interval);
         setAnalysisProgress(100);
@@ -197,13 +207,10 @@ export const UploadPage: React.FC = () => {
         // 稍微延迟以显示 100%
         setTimeout(() => {
             setAnalysisStep('results');
-            // 这里我们可能需要更新 mockAnalysisResults 或使用 setAnalysisResults (如果需要从后端获取结果列表)
-            // 由于当前页面是静态 mock 数据，我们暂时不替换 results 的渲染源，
-            // 而是假装分析完成了。
-            // 真实的下一步：将 mockAnalysisResults 替换为 state，并用 data.results 更新它。
-            // 但为了保持改动最小，我们先不动渲染部分，仅确保流程跑通。
-            // 如果后端返回了结果，我们可以打印看看
-            console.log("Analysis results:", data.results);
+            setAnalysisResults(data.results);
+            if (data.results.length > 0) {
+              setSelectedRisk(data.results[0]);
+            }
         }, 500);
 
     } catch (error) {
@@ -241,6 +248,40 @@ export const UploadPage: React.FC = () => {
       default: return '';
     }
   };
+
+  const handleExport = async () => {
+    const targetFile = files.find(f => f.status === 'completed');
+    if (!targetFile) return;
+
+    try {
+        const token = localStorage.getItem('NexDoc_token');
+        const response = await fetch(`/api/v1/contracts/${targetFile.id}/export/pdf`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) throw new Error('Export failed');
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        // 使用后端返回的文件名，或者自己构造
+        // response.headers.get('content-disposition') 可能会有乱码问题，简单起见用前端文件名
+        a.download = `审查报告_${targetFile.name}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (error) {
+        console.error('Export error:', error);
+        alert('导出失败，请稍后重试');
+    }
+  };
+
+  const highRiskCount = analysisResults.filter(r => r.type === 'high').length;
+  const mediumRiskCount = analysisResults.filter(r => r.type === 'medium').length;
+  const lowRiskCount = analysisResults.filter(r => r.type === 'low').length;
 
   return (
     <div className="space-y-6">
@@ -396,22 +437,22 @@ export const UploadPage: React.FC = () => {
             {/* Summary */}
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="bg-red-50 rounded-xl p-4 text-center border border-red-100">
-                <div className="text-3xl font-bold text-red-500">1</div>
+                <div className="text-3xl font-bold text-red-500">{highRiskCount}</div>
                 <div className="text-xs font-medium text-red-400 mt-1">高风险</div>
               </div>
               <div className="bg-orange-50 rounded-xl p-4 text-center border border-orange-100">
-                <div className="text-3xl font-bold text-orange-500">2</div>
+                <div className="text-3xl font-bold text-orange-500">{mediumRiskCount}</div>
                 <div className="text-xs font-medium text-orange-400 mt-1">中风险</div>
               </div>
               <div className="bg-green-50 rounded-xl p-4 text-center border border-green-100">
-                <div className="text-3xl font-bold text-green-500">1</div>
+                <div className="text-3xl font-bold text-green-500">{lowRiskCount}</div>
                 <div className="text-xs font-medium text-green-400 mt-1">低风险</div>
               </div>
             </div>
 
             {/* Risk Items */}
             <div className="space-y-3">
-              {mockAnalysisResults.map((risk) => (
+              {analysisResults.map((risk) => (
                 <button
                   key={risk.id}
                   onClick={() => setSelectedRisk(risk)}
@@ -439,7 +480,12 @@ export const UploadPage: React.FC = () => {
                 <Zap className="w-4 h-4 mr-2 fill-current" />
                 一键修复所有问题
               </MagneticButton>
-              <MagneticButton variant="outline" size="md" className="w-full justify-center bg-white">
+              <MagneticButton 
+                variant="outline" 
+                size="md" 
+                className="w-full justify-center bg-white"
+                onClick={handleExport}
+              >
                 导出审查报告
               </MagneticButton>
             </div>
@@ -501,14 +547,11 @@ export const UploadPage: React.FC = () => {
                         AI 建议
                       </h4>
                       <p className="text-gray-700 mb-4 relative z-10">{selectedRisk.suggestion}</p>
-                      <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border-l-4 border-lime shadow-sm relative z-10">
+                      {/* <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border-l-4 border-lime shadow-sm relative z-10">
                         <p className="text-charcoal font-medium">
-                          {selectedRisk.type === 'high' && '如乙方违约，应向甲方支付合同金额 10% 的违约金。'}
-                          {selectedRisk.type === 'medium' && selectedRisk.id === 2 && '因本合同引起的争议，双方应友好协商解决；协商不成的，提交甲方所在地人民法院诉讼解决。'}
-                          {selectedRisk.type === 'medium' && selectedRisk.id === 3 && '乙方提供的技术成果知识产权归甲方所有，乙方享有署名权。'}
-                          {selectedRisk.type === 'low' && '任何通知应以书面形式通过快递或电子邮件送达，电子邮件发送后 24 小时视为送达。'}
+                           (Revised clause placeholder)
                         </p>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
 

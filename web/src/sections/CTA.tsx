@@ -79,7 +79,7 @@ export const CTA: React.FC<CTAProps> = ({ onOpenTrial }) => {
           </h2>
 
           <p className="text-lg text-gray-300 mb-10 max-w-xl mx-auto">
-            加入 10,000+ 法律团队的行列，让 LexGuard AI 成为您的数字法务官
+            加入 10,000+ 法律团队的行列，让 NexDoc AI 成为您的数字法务官
           </p>
 
           <div className="flex flex-wrap justify-center gap-4">

@@ -232,7 +232,7 @@ export const Settings: React.FC = () => {
     <div className="space-y-6">
       <div className="p-4 bg-gray-50 rounded-xl">
         <p className="text-sm text-gray-600">
-          API 密钥用于将 LexGuard AI 集成到您的系统中。
+          API 密钥用于将 NexDoc AI 集成到您的系统中。
           请妥善保管，不要泄露给他人。
         </p>
       </div>

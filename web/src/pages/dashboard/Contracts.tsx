@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   FileText, 
   Search, 
@@ -13,63 +13,21 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ContractDetailModal } from '@/components/ContractDetailModal';
+import { useNavigate } from 'react-router-dom';
 
-const contracts = [
-  { 
-    id: 1, 
-    name: '技术服务合同-2024-001', 
-    type: '技术服务',
-    status: 'analyzed', 
-    risks: { high: 1, medium: 2, low: 0 },
-    date: '2024-01-15',
-    size: '2.3 MB'
-  },
-  { 
-    id: 2, 
-    name: '采购协议-供应商A', 
-    type: '采购',
-    status: 'pending', 
-    risks: { high: 0, medium: 0, low: 0 },
-    date: '2024-01-14',
-    size: '1.8 MB'
-  },
-  { 
-    id: 3, 
-    name: '劳动合同-张三', 
-    type: '人力资源',
-    status: 'completed', 
-    risks: { high: 0, medium: 0, low: 0 },
-    date: '2024-01-13',
-    size: '856 KB'
-  },
-  { 
-    id: 4, 
-    name: '保密协议-合作方B', 
-    type: '保密',
-    status: 'analyzed', 
-    risks: { high: 0, medium: 1, low: 2 },
-    date: '2024-01-12',
-    size: '1.2 MB'
-  },
-  { 
-    id: 5, 
-    name: '房屋租赁合同-办公室', 
-    type: '租赁',
-    status: 'completed', 
-    risks: { high: 0, medium: 0, low: 0 },
-    date: '2024-01-10',
-    size: '3.1 MB'
-  },
-  { 
-    id: 6, 
-    name: '软件许可协议-厂商C', 
-    type: '许可',
-    status: 'analyzed', 
-    risks: { high: 2, medium: 3, low: 1 },
-    date: '2024-01-08',
-    size: '4.5 MB'
-  },
-];
+interface Contract {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  risks: {
+    high: number;
+    medium: number;
+    low: number;
+  };
+  date: string;
+  size: string;
+}
 
 const filters = [
   { name: '全部', value: 'all' },
@@ -79,15 +37,63 @@ const filters = [
 ];
 
 export const Contracts: React.FC = () => {
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [selectedContracts, setSelectedContracts] = useState<number[]>([]);
-  const [selectedContract, setSelectedContract] = useState<typeof contracts[0] | null>(null);
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchContracts();
+  }, []);
+
+  const fetchContracts = async () => {
+    try {
+      const token = localStorage.getItem('NexDoc_token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await fetch('/api/v1/contracts/', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Transform backend data to frontend format
+        const formattedContracts = data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          type: item.contract_type || '未知类型',
+          status: item.status,
+          risks: item.risk_summary || { high: 0, medium: 0, low: 0 },
+          date: new Date(item.upload_date).toLocaleDateString(),
+          size: item.file_size
+        }));
+        setContracts(formattedContracts);
+      }
+    } catch (error) {
+      console.error('Failed to fetch contracts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredContracts = contracts.filter(contract => {
     const matchesSearch = contract.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = activeFilter === 'all' || contract.status === activeFilter;
+    let matchesFilter = activeFilter === 'all' || contract.status === activeFilter;
+    
+    // Map backend statuses to filter categories if needed
+    if (activeFilter === 'pending' && (contract.status === 'uploading' || contract.status === 'analyzing')) {
+      matchesFilter = true;
+    }
+    
     return matchesSearch && matchesFilter;
   });
 
@@ -144,6 +150,86 @@ export const Contracts: React.FC = () => {
     );
   };
 
+  const handleDelete = async (ids: number[]) => {
+    if (!window.confirm('确定要删除选中的合同吗？')) return;
+
+    try {
+      const token = localStorage.getItem('NexDoc_token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      for (const id of ids) {
+        await fetch(`/api/v1/contracts/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
+
+      // Refresh list
+      fetchContracts();
+      setSelectedContracts([]);
+    } catch (error) {
+      console.error('Failed to delete contracts:', error);
+      alert('删除失败，请稍后重试');
+    }
+  };
+
+  const handleDownload = async (contract: Contract) => {
+    try {
+      const token = localStorage.getItem('NexDoc_token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      // 如果已分析完成，下载 PDF 报告，否则下载原始文件
+      // 或者这里默认下载原始文件？
+      // 用户需求倾向于“下载功能”是真实的。
+      // 通常下载图标是下载原始文件，而“导出”是下载报告。
+      // 但为了方便，我们可以先尝试下载报告，如果状态不是 analyzed，则下载原始文件。
+      // 实际上，为了明确，我们让这个按钮下载生成的报告（因为这是 LexGuard 的核心价值），
+      // 但如果用户想要原始文件怎么办？
+      // 让我们简单点：默认下载生成的 PDF 报告（如果可用），否则下载原始文件。
+      // 或者给用户一个选择？
+      // 既然用户之前强调“导出审查报告”，那我们优先下载报告。
+      
+      let url = `/api/v1/contracts/${contract.id}/download`; // Default to original
+      let filename = contract.name;
+
+      if (contract.status === 'analyzed' || contract.status === 'completed') {
+         // Prefer report if available
+         url = `/api/v1/contracts/${contract.id}/export/pdf`;
+         filename = `审查报告_${contract.name}.pdf`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('下载失败，请稍后重试');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -151,15 +237,20 @@ export const Contracts: React.FC = () => {
         <h1 className="text-2xl font-bold text-charcoal">合同管理</h1>
         <div className="flex items-center gap-3">
           {selectedContracts.length > 0 && (
-            <button className="flex items-center gap-2 px-4 py-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+            <button 
+              onClick={() => handleDelete(selectedContracts)}
+              className="flex items-center gap-2 px-4 py-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+            >
               <Trash2 className="w-4 h-4" />
               删除选中 ({selectedContracts.length})
             </button>
           )}
+          {/* 
           <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
             <Download className="w-4 h-4" />
             导出
           </button>
+          */}
         </div>
       </div>
 
@@ -262,13 +353,17 @@ export const Contracts: React.FC = () => {
                       <Eye className="w-4 h-4 text-gray-400" />
                     </button>
                     <button 
-                      onClick={() => alert('下载功能演示')}
+                      onClick={() => handleDownload(contract)}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      title={contract.status === 'analyzed' ? "下载审查报告" : "下载原始文件"}
                     >
                       <Download className="w-4 h-4 text-gray-400" />
                     </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                      <MoreVertical className="w-4 h-4 text-gray-400" />
+                    <button 
+                      onClick={() => handleDelete([contract.id])}
+                      className="p-2 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
                     </button>
                   </div>
                 </td>
@@ -305,7 +400,6 @@ export const Contracts: React.FC = () => {
         </div>
       </div>
 
-      {/* Contract Detail Modal */}
       <ContractDetailModal 
         contract={selectedContract}
         isOpen={isDetailOpen}

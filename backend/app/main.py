@@ -7,10 +7,15 @@ import os
 load_dotenv()
 
 from app.api.api import api_router
+from app.core.database import engine, Base
+from app.models import user, contract  # Import models to register them
+
+# Create tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="LexGuard AI API",
-    description="Backend API for LexGuard AI - Legal Contract Review Platform",
+    title="NexDoc AI API",
+    description="Backend API for NexDoc AI - Legal Contract Review Platform",
     version="1.0.0",
     openapi_url="/api/v1/openapi.json",
     docs_url="/api/v1/docs",
@@ -36,5 +41,5 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to LexGuard AI API", "status": "running"}
+    return {"message": "Welcome to NexDoc AI API", "status": "running"}
 

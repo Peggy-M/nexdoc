@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>合同法律风险审查报告</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+
+        @font-face {
+            font-family: "ChineseFont";
+            src: url("file:///F:/Workspace/code/python-workspace/Kimi_Agent_LexGuard AI/backend/app/services/../assets/fonts/simhei.ttf");
+        }
+
+        body {
+            font-family: "ChineseFont", sans-serif;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .cover {
+            text-align: center;
+            padding-top: 5cm;
+            page-break-after: always;
+        }
+
+        .cover h1 {
+            font-size: 36pt;
+            color: #1a202c;
+            margin-bottom: 2cm;
+        }
+
+        .cover-info {
+            font-size: 14pt;
+            margin-bottom: 1cm;
+        }
+        
+        .cover-info span {
+            color: #718096;
+        }
+
+        h1 {
+            font-size: 24pt;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            color: #2d3748;
+        }
+
+        h2 {
+            font-size: 18pt;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            color: #4a5568;
+        }
+
+        .summary-cards {
+            display: block; /* Table-like layout for xhtml2pdf */
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .summary-card {
+            display: inline-block;
+            width: 30%;
+            padding: 15px;
+            margin-right: 2%;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-card.high { background-color: #fff5f5; border: 1px solid #fed7d7; }
+        .summary-card.medium { background-color: #fffaf0; border: 1px solid #feebc8; }
+        .summary-card.low { background-color: #f0fff4; border: 1px solid #c6f6d5; }
+
+        .summary-number {
+            font-size: 32pt;
+            font-weight: bold;
+            display: block;
+        }
+
+        .summary-label {
+            font-size: 12pt;
+            color: #718096;
+        }
+        
+        .high .summary-number { color: #e53e3e; }
+        .medium .summary-number { color: #dd6b20; }
+        .low .summary-number { color: #38a169; }
+
+        .risk-item {
+            margin-bottom: 30px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #fff;
+            page-break-inside: avoid;
+        }
+
+        .risk-header {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #edf2f7;
+            padding-bottom: 10px;
+        }
+
+        .risk-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 10pt;
+            font-weight: bold;
+            color: #fff;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .risk-tag.high { background-color: #e53e3e; }
+        .risk-tag.medium { background-color: #dd6b20; }
+        .risk-tag.low { background-color: #38a169; }
+
+        .risk-title {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #2d3748;
+            vertical-align: middle;
+        }
+
+        .section-label {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #718096;
+            margin-bottom: 5px;
+            margin-top: 15px;
+            text-transform: uppercase;
+        }
+
+        .clause-box {
+            background-color: #f7fafc;
+            border-left: 4px solid #cbd5e0;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            font-family: "ChineseFont", serif;
+            color: #4a5568;
+            font-style: italic;
+        }
+
+        .analysis-text {
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .suggestion-box {
+            background-color: #f0fff4;
+            border: 1px solid #c6f6d5;
+            border-radius: 6px;
+            padding: 15px;
+            color: #2f855a;
+        }
+    </style>
+</head>
+<body>
+    <!-- 封面 -->
+    <div class="cover">
+        <h1>合同法律风险审查报告</h1>
+        <div style="height: 2cm;"></div>
+        <div class="cover-info">
+            <span>合同名称：</span><br>
+            数据提供合同.pdf
+        </div>
+        <div class="cover-info">
+            <span>审查日期：</span><br>
+            2026-02-04
+        </div>
+        <div class="cover-info">
+            <span>审查工具：</span><br>
+            LexGuard AI 智能审查系统
+        </div>
+    </div>
+
+    <!-- 目录/概览 -->
+    <h1>一、风险概览</h1>
+    <div style="margin-bottom: 20px;">
+        <p>本次审查共发现 <strong>7</strong> 处法律风险点。</p>
+    </div>
+
+    <table style="width: 100%; border-spacing: 10px;">
+        <tr>
+            <td class="summary-card high">
+                <span class="summary-number">4</span>
+                <span class="summary-label">高风险</span>
+            </td>
+            <td class="summary-card medium">
+                <span class="summary-number">3</span>
+                <span class="summary-label">中风险</span>
+            </td>
+            <td class="summary-card low">
+                <span class="summary-number">0</span>
+                <span class="summary-label">低风险</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- 详细分析 -->
+    <h1>二、详细审查意见</h1>
+    
+    
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag high">
+                高风险
+                
+                
+            </span>
+            <span class="risk-title">数据来源合法性保证不足</span>
+        </div>
+        
+        <div class="section-label">相关条款</div>
+        <div class="clause-box">
+            "3.1 乙方（数据提供方）承诺其对于标的数据享有的产权如下..."
+        </div>
+        
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">
+            合同中虽然要求乙方承诺享有数据产权，但未明确约定乙方需保证数据来源的合法性（如是否获得个人信息主体的授权同意、是否存在侵犯第三方知识产权或商业秘密的情形）。若数据存在合规瑕疵，甲方可能面临行政处罚或民事赔偿风险。
+        </div>
+        
+        <div class="section-label">修改建议</div>
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议在第3.1条或第10.2条中增加乙方关于数据来源合法性的陈述与保证，明确承诺数据已取得必要授权，不侵犯任何第三方合法权益，并约定若因数据来源问题导致甲方受损，乙方应承担全部赔偿责任。
+        </div>
+    </div>
+    
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag high">
+                高风险
+                
+                
+            </span>
+            <span class="risk-title">数据质量标准约定模糊</span>
+        </div>
+        
+        <div class="section-label">相关条款</div>
+        <div class="clause-box">
+            "第四条 数据质量标准
+乙方（数据提供方）承诺按照以下标准交付数据..."
+        </div>
+        
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">
+            第4条关于数据质量标准的约定为空白或仅作原则性规定，缺乏具体的量化指标（如准确率、完整性、字段缺失率等）。一旦发生质量纠纷，双方难以依据统一标准判定责任，容易引发争议。
+        </div>
+        
+        <div class="section-label">修改建议</div>
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议双方在合同附件中详细约定数据质量标准，明确具体的质量维度（如准确性、完整性、时效性）及对应的量化指标和检测方法，避免使用笼统描述。
+        </div>
+    </div>
+    
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag medium">
+                
+                中风险
+                
+            </span>
+            <span class="risk-title">默认验收合格条款风险</span>
+        </div>
+        
+        <div class="section-label">相关条款</div>
+        <div class="clause-box">
+            "第七条 数据验收
+...如甲方（数据接收方）逾期未验收或未提出异议的，视为验收合格..."
+        </div>
+        
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">
+            第7条规定甲方逾期未验收或未提出异议视为验收合格。这对甲方（数据接收方）风险较大，若因工作繁忙或数据量大导致未在期内完成细致验收，将丧失对数据质量问题提出异议的权利。
+        </div>
+        
+        <div class="section-label">修改建议</div>
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议延长验收期限，或修改条款为“若甲方在验收期内将数据投入实际生产环境使用，视为验收合格”，而非单纯的时间经过即视为合格，以保护甲方权益。
+        </div>
+    </div>
+    
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag medium">
+                
+                中风险
+                
+            </span>
+            <span class="risk-title">违约责任缺乏具体量化标准</span>
+        </div>
+        
+        <div class="section-label">相关条款</div>
+        <div class="clause-box">
+            "第十四条 违约责任
+14.3 违约的处理
+违约方应承担继续履行合同、采取补救措施等责任..."
+        </div>
+        
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">
+            第14条仅规定了违约方应承担继续履行、赔偿损失等责任，但未约定具体的违约金计算方式或逾期履行/逾期付款的日违约金比例。在发生违约时，受损方难以举证具体损失金额，导致索赔困难。
+        </div>
+        
+        <div class="section-label">修改建议</div>
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议增加具体的违约金条款，例如约定逾期付款或逾期交付数据的，每逾期一日应按合同总额的X%支付违约金；若违约金不足以弥补损失的，还应赔偿实际损失。
+        </div>
+    </div>
+    
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag high">
+                高风险
+                
+                
+            </span>
+            <span class="risk-title">争议解决方式未选定</span>
+        </div>
+        
+        <div class="section-label">相关条款</div>
+        <div class="clause-box">
+            "第十六条 争议解决
+16.2 诉讼或仲裁
+协商不成的，按照下列第____种方式解决..."
+        </div>
+        
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">
+            第16条关于争议解决方式留白，未明确选择诉讼还是仲裁。若发生争议且双方无法达成补充协议，将导致管辖权不明，增加维权成本和不确定性。
+        </div>
+        
+        <div class="section-label">修改建议</div>
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议明确约定争议解决方式，选择具体的法院管辖（如原告所在地、合同签署地）或选定具体的仲裁委员会，并确认仲裁地点。
+        </div>
+    </div>
+    
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag high">
+                高风险
+                
+                
+            </span>
+            <span class="risk-title">知识产权侵权赔偿机制被动</span>
+        </div>
+        
+        <div class="section-label">相关条款</div>
+        <div class="clause-box">
+            "11.2 若因另一方侵犯知识产权、商业秘密造成一方损失或承担赔偿责任的，该方有权要求另一方承担相应责任。"
+        </div>
+        
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">
+            第11.2条规定“若因另一方侵犯知识产权...造成一方损失...该方有权要求另一方承担相应责任”。这意味着甲方必须先被认定侵权或实际赔偿第三方后，才能向乙方追偿，无法在第一时间要求乙方介入处理侵权指控。
+        </div>
+        
+        <div class="section-label">修改建议</div>
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议修改为：若第三方指控甲方使用标的数据侵犯其知识产权，乙方应负责处理该指控（包括应诉、和解、支付赔偿金），并赔偿甲方因此遭受的所有损失（包括律师费、和解金等），保障甲方的正常使用。
+        </div>
+    </div>
+    
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag medium">
+                
+                中风险
+                
+            </span>
+            <span class="risk-title">衍生数据界定存在法律风险</span>
+        </div>
+        
+        <div class="section-label">相关条款</div>
+        <div class="clause-box">
+            "3.4 衍生数据的产权归属
+甲方（数据接收方）从乙方（数据提供方）获取的标的数据进行处理后形成的不包含标的数据的衍生数据..."
+        </div>
+        
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">
+            第3.4条规定衍生数据产权归接收方，但前提是“不包含标的数据”。在实际数据处理中，衍生数据往往难以完全剥离原始数据。该定义过于绝对，可能导致接收方对投入大量成本加工后的数据无法享有明确产权。
+        </div>
+        
+        <div class="section-label">修改建议</div>
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议明确“衍生数据”的定义，允许在无法完全剥离原始数据的情况下，只要数据内容或形式发生了实质性改变且显著提升价值，接收方即享有产权，同时约定对该部分数据的保密及使用限制。
+        </div>
+    </div>
+    
+
+</body>
+</html>

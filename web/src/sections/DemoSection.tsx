@@ -153,7 +153,7 @@ export const DemoSection: React.FC = () => {
             <span className="text-sm font-medium text-charcoal">交互式演示</span>
           </div>
           <h2 className="text-4xl lg:text-5xl font-bold text-charcoal mb-4">
-            亲身体验 LexGuard AI
+            亲身体验 NexDoc AI
           </h2>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto">
             上传一份合同，感受 AI 如何在几秒钟内完成专业级审查

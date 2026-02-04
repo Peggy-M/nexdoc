@@ -1,5 +1,5 @@
 @echo off
-echo Starting LexGuard AI Backend...
+echo Starting NexDoc AI Backend...
 
 cd backend
 

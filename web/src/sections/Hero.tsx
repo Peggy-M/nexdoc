@@ -140,7 +140,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenTrial, onOpenVideo }) => {
               ref={subtitleRef}
               className="text-lg lg:text-xl text-gray-600 max-w-xl leading-relaxed"
             >
-              在漏洞引发问题之前识别并修复。LexGuard 为现代团队提供精准的法律防护，
+              在漏洞引发问题之前识别并修复。NexDoc 为现代团队提供精准的法律防护，
               模拟"数字法务官"思维，全量解构合同逻辑。
             </p>
 
@@ -195,7 +195,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenTrial, onOpenVideo }) => {
               >
                 <img
                   src="/images/hero-dashboard.jpg"
-                  alt="LexGuard AI Dashboard"
+                  alt="NexDoc AI Dashboard"
                   className="w-full h-auto rounded-2xl"
                 />
                 {/* Glow overlay */}

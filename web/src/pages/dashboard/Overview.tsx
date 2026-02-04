@@ -113,7 +113,7 @@ export const Overview: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-charcoal">
-            {greeting}，欢迎回到 LexGuard AI
+            {greeting}，欢迎回到 NexDoc AI
           </h1>
           <p className="text-gray-500 mt-1">
             今天有 3 份合同需要您的关注

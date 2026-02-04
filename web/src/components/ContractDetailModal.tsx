@@ -30,15 +30,21 @@ export const ContractDetailModal: React.FC<ContractDetailModalProps> = ({
       analyzed: 'bg-orange-100 text-orange-600',
       pending: 'bg-gray-100 text-gray-600',
       completed: 'bg-green-100 text-green-600',
+      uploading: 'bg-blue-100 text-blue-600',
+      analyzing: 'bg-blue-100 text-blue-600',
+      failed: 'bg-red-100 text-red-600',
     };
     const labels: Record<string, string> = {
       analyzed: '已分析',
       pending: '待分析',
       completed: '已完成',
+      uploading: '上传中',
+      analyzing: '分析中',
+      failed: '失败',
     };
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium ${styles[status]}`}>
-        {labels[status]}
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-600'}`}>
+        {labels[status] || status}
       </span>
     );
   };

@@ -1,6 +1,6 @@
-# LexGuard AI Backend
+# NexDoc AI Backend
 
-这是一个基于 FastAPI 的后端服务，为 LexGuard AI 提供合同分析 API。
+这是一个基于 FastAPI 的后端服务，为 NexDoc AI 提供合同分析 API。
 
 ## 环境要求
 

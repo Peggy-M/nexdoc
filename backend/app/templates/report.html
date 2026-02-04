@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>合同法律风险审查报告</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+
+        @font-face {
+            font-family: "ChineseFont";
+            src: url("{{ font_path }}");
+        }
+
+        body {
+            font-family: "ChineseFont", sans-serif;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .cover {
+            text-align: center;
+            padding-top: 5cm;
+            page-break-after: always;
+        }
+
+        .cover h1 {
+            font-size: 36pt;
+            color: #1a202c;
+            margin-bottom: 2cm;
+        }
+
+        .cover-info {
+            font-size: 14pt;
+            margin-bottom: 1cm;
+        }
+        
+        .cover-info span {
+            color: #718096;
+        }
+
+        h1 {
+            font-size: 24pt;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            color: #2d3748;
+        }
+
+        h2 {
+            font-size: 18pt;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            color: #4a5568;
+        }
+
+        .summary-cards {
+            display: block; /* Table-like layout for xhtml2pdf */
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .summary-card {
+            display: inline-block;
+            width: 30%;
+            padding: 15px;
+            margin-right: 2%;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-card.high { background-color: #fff5f5; border: 1px solid #fed7d7; }
+        .summary-card.medium { background-color: #fffaf0; border: 1px solid #feebc8; }
+        .summary-card.low { background-color: #f0fff4; border: 1px solid #c6f6d5; }
+
+        .summary-number {
+            font-size: 32pt;
+            font-weight: bold;
+            display: block;
+        }
+
+        .summary-label {
+            font-size: 12pt;
+            color: #718096;
+        }
+        
+        .high .summary-number { color: #e53e3e; }
+        .medium .summary-number { color: #dd6b20; }
+        .low .summary-number { color: #38a169; }
+
+        .risk-item {
+            margin-bottom: 30px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #fff;
+            page-break-inside: avoid;
+        }
+
+        .risk-header {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #edf2f7;
+            padding-bottom: 10px;
+        }
+
+        .risk-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 10pt;
+            font-weight: bold;
+            color: #fff;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .risk-tag.high { background-color: #e53e3e; }
+        .risk-tag.medium { background-color: #dd6b20; }
+        .risk-tag.low { background-color: #38a169; }
+
+        .risk-title {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #2d3748;
+            vertical-align: middle;
+        }
+
+        .section-label {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #718096;
+            margin-bottom: 5px;
+            margin-top: 15px;
+            text-transform: uppercase;
+        }
+
+        .clause-box {
+            background-color: #f7fafc;
+            border-left: 4px solid #cbd5e0;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            font-family: "ChineseFont", serif;
+            color: #4a5568;
+            font-style: italic;
+        }
+
+        .analysis-text {
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .suggestion-box {
+            background-color: #f0fff4;
+            border: 1px solid #c6f6d5;
+            border-radius: 6px;
+            padding: 15px;
+            color: #2f855a;
+        }
+    </style>
+</head>
+<body>
+    <!-- 封面 -->
+    <div class="cover">
+        <h1>合同法律风险审查报告</h1>
+        <div style="height: 2cm;"></div>
+        <div class="cover-info">
+            <span>合同名称：</span><br>
+            {{ contract_name }}
+        </div>
+        <div class="cover-info">
+            <span>审查日期：</span><br>
+            {{ date }}
+        </div>
+        <div class="cover-info">
+            <span>审查工具：</span><br>
+            LexGuard AI 智能审查系统
+        </div>
+    </div>
+
+    <!-- 目录/概览 -->
+    <h1>一、风险概览</h1>
+    <div style="margin-bottom: 20px;">
+        <p>本次审查共发现 <strong>{{ total_risks }}</strong> 处法律风险点。</p>
+    </div>
+
+    <table style="width: 100%; border-spacing: 10px;">
+        <tr>
+            <td class="summary-card high">
+                <span class="summary-number">{{ high_count }}</span>
+                <span class="summary-label">高风险</span>
+            </td>
+            <td class="summary-card medium">
+                <span class="summary-number">{{ medium_count }}</span>
+                <span class="summary-label">中风险</span>
+            </td>
+            <td class="summary-card low">
+                <span class="summary-number">{{ low_count }}</span>
+                <span class="summary-label">低风险</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- 详细分析 -->
+    <h1>二、详细审查意见</h1>
+    
+    {% for result in analysis_results %}
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag {{ result.type }}">
+                {% if result.type == 'high' %}高风险{% endif %}
+                {% if result.type == 'medium' %}中风险{% endif %}
+                {% if result.type == 'low' %}低风险{% endif %}
+            </span>
+            <span class="risk-title">{{ result.title }}</span>
+        </div>
+        
+        <div class="section-label">相关条款</div>
+        <div class="clause-box">
+            "{{ result.clause }}"
+        </div>
+        
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">
+            {{ result.description }}
+        </div>
+        
+        <div class="section-label">修改建议</div>
+        <div class="suggestion-box">
+            <strong>建议：</strong> {{ result.suggestion }}
+        </div>
+    </div>
+    {% endfor %}
+
+</body>
+</html>

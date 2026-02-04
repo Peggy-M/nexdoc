@@ -51,7 +51,7 @@ export const Footer: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-lime flex items-center justify-center">
                 <Shield className="w-6 h-6 text-charcoal" />
               </div>
-              <span className="text-xl font-bold">LexGuard AI</span>
+              <span className="text-xl font-bold">NexDoc AI</span>
             </div>
             <p className="text-gray-400 text-sm mb-6 max-w-xs">
               基于 DeepSeek-R1 推理引擎的新一代智能合同防御系统，为您的法律工作流提供精准防护。
@@ -59,7 +59,7 @@ export const Footer: React.FC = () => {
             <div className="space-y-2 text-sm text-gray-400">
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                <span>contact@lexguard.ai</span>
+                <span>contact@NexDoc.ai</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
@@ -95,7 +95,7 @@ export const Footer: React.FC = () => {
         {/* Bottom */}
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-gray-400">
-            © 2024 LexGuard AI. All rights reserved.
+            © 2024 NexDoc AI. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <a href="#" className="text-gray-400 hover:text-lime transition-colors">

@@ -2,6 +2,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LandingPage } from '@/pages/LandingPage';
 import { Login } from '@/pages/Login';
+import { Register } from '@/pages/Register';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { Overview } from '@/pages/dashboard/Overview';
 import { Contracts } from '@/pages/dashboard/Contracts';
@@ -13,7 +14,7 @@ import { Settings } from '@/pages/dashboard/Settings';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const user = localStorage.getItem('lexguard_user');
+  const user = localStorage.getItem('NexDoc_user');
   if (!user) {
     return <Navigate to="/login" replace />;
   }
@@ -29,6 +30,9 @@ function App() {
         
         {/* Login */}
         <Route path="/login" element={<Login />} />
+        
+        {/* Register */}
+        <Route path="/register" element={<Register />} />
         
         {/* Dashboard */}
         <Route 

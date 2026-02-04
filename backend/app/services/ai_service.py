@@ -102,7 +102,7 @@ class AIService:
             ])
             
             content = response.content
-            # Cleanup markdown if present
+            # Cleanup Markdown if present
             if content.startswith("```json"):
                 content = content[7:]
             if content.endswith("```"):

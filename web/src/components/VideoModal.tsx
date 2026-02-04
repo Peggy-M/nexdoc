@@ -149,7 +149,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({ isOpen, onClose }) => {
                 </button>
 
                 <span className="text-sm text-white/70">
-                  LexGuard AI 产品演示
+                  NexDoc AI 产品演示
                 </span>
               </div>
 
@@ -166,10 +166,10 @@ export const VideoModal: React.FC<VideoModalProps> = ({ isOpen, onClose }) => {
         {/* Video Info */}
         <div className="p-6 bg-charcoal">
           <h3 className="text-xl font-bold text-white mb-2">
-            LexGuard AI 产品演示
+            NexDoc AI 产品演示
           </h3>
           <p className="text-gray-400 text-sm">
-            了解 LexGuard AI 如何帮助您的团队快速识别合同风险、提升审查效率。
+            了解 NexDoc AI 如何帮助您的团队快速识别合同风险、提升审查效率。
             本演示涵盖四大核心功能：极速多模态解析、"上帝视角"深度审查、交互式修改建议和数字化档案库。
           </p>
         </div>

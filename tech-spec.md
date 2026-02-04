@@ -1,4 +1,4 @@
-# LexGuard AI 技术规格文档
+# NexDoc AI 技术规格文档
 
 ## 组件清单
 
