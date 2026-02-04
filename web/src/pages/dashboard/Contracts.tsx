@@ -73,7 +73,7 @@ export const Contracts: React.FC = () => {
           type: item.contract_type || '未知类型',
           status: item.status,
           risks: item.risk_summary || { high: 0, medium: 0, low: 0 },
-          date: new Date(item.upload_date).toLocaleDateString(),
+          date: new Date(item.upload_date).toLocaleString('zh-CN', { hour12: false }),
           size: item.file_size
         }));
         setContracts(formattedContracts);

@@ -9,82 +9,86 @@ import {
   Zap,
   Shield
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { HolographicCard } from '@/components/HolographicCard';
 import { MagneticButton } from '@/components/MagneticButton';
 
-const stats = [
-  { 
-    name: '合同总数', 
-    value: '128', 
-    change: '+12', 
-    changeType: 'positive',
-    icon: FileText,
-    color: 'blue'
-  },
-  { 
-    name: '待处理风险', 
-    value: '23', 
-    change: '-5', 
-    changeType: 'positive',
-    icon: AlertTriangle,
-    color: 'orange'
-  },
-  { 
-    name: '已审核合同', 
-    value: '96', 
-    change: '+8', 
-    changeType: 'positive',
-    icon: CheckCircle,
-    color: 'green'
-  },
-  { 
-    name: '平均处理时间', 
-    value: '2.3h', 
-    change: '-0.5h', 
-    changeType: 'positive',
-    icon: Clock,
-    color: 'purple'
-  },
-];
-
-const recentContracts = [
-  { id: 1, name: '技术服务合同-2024-001', status: 'analyzed', risks: 3, date: '2024-01-15' },
-  { id: 2, name: '采购协议-供应商A', status: 'pending', risks: 0, date: '2024-01-14' },
-  { id: 3, name: '劳动合同-张三', status: 'completed', risks: 0, date: '2024-01-13' },
-  { id: 4, name: '保密协议-合作方B', status: 'analyzed', risks: 1, date: '2024-01-12' },
-];
-
-const recentRisks = [
-  { id: 1, title: '违约金比例过高', level: 'high', contract: '技术服务合同-2024-001' },
-  { id: 2, title: '争议解决条款缺失', level: 'medium', contract: '保密协议-合作方B' },
-  { id: 3, title: '知识产权归属不明', level: 'medium', contract: '技术服务合同-2024-001' },
-];
+const iconMap: any = {
+  FileText,
+  AlertTriangle,
+  CheckCircle,
+  Clock
+};
 
 export const Overview: React.FC = () => {
+  const navigate = useNavigate();
   const [greeting, setGreeting] = useState('');
+  
+  // Dynamic Data States
+  const [stats, setStats] = useState<any[]>([
+      { name: '合同总数', value: '0', change: '0', changeType: 'positive', icon: 'FileText', color: 'blue' },
+      { name: '待处理风险', value: '0', change: '0', changeType: 'positive', icon: 'AlertTriangle', color: 'orange' },
+      { name: '已审核合同', value: '0', change: '0', changeType: 'positive', icon: 'CheckCircle', color: 'green' },
+      { name: '平均处理时间', value: '0h', change: '0h', changeType: 'positive', icon: 'Clock', color: 'purple' },
+  ]);
+  const [recentContracts, setRecentContracts] = useState<any[]>([]);
+  const [recentRisks, setRecentRisks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting('早上好');
     else if (hour < 18) setGreeting('下午好');
     else setGreeting('晚上好');
+    
+    fetchOverviewData();
   }, []);
+
+  const fetchOverviewData = async () => {
+      try {
+          const token = localStorage.getItem('NexDoc_token');
+          if (!token) {
+              navigate('/login');
+              return;
+          }
+
+          const response = await fetch('/api/v1/overview/', {
+              headers: {
+                  'Authorization': `Bearer ${token}`
+              }
+          });
+
+          if (response.ok) {
+              const data = await response.json();
+              setStats(data.stats);
+              setRecentContracts(data.recentContracts);
+              setRecentRisks(data.recentRisks);
+          }
+      } catch (error) {
+          console.error('Failed to fetch overview data:', error);
+      } finally {
+          setLoading(false);
+      }
+  };
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       analyzed: 'bg-orange-100 text-orange-600',
       pending: 'bg-gray-100 text-gray-600',
       completed: 'bg-green-100 text-green-600',
+      uploading: 'bg-blue-100 text-blue-600',
+      analyzing: 'bg-purple-100 text-purple-600',
     };
     const labels: Record<string, string> = {
       analyzed: '已分析',
       pending: '待分析',
       completed: '已完成',
+      uploading: '上传中',
+      analyzing: '分析中',
     };
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status]}`}>
-        {labels[status]}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100'}`}>
+        {labels[status] || status}
       </span>
     );
   };
@@ -101,8 +105,8 @@ export const Overview: React.FC = () => {
       low: '低风险',
     };
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[level]}`}>
-        {labels[level]}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[level] || 'bg-gray-100'}`}>
+        {labels[level] || level}
       </span>
     );
   };
@@ -116,7 +120,7 @@ export const Overview: React.FC = () => {
             {greeting}，欢迎回到 NexDoc AI
           </h1>
           <p className="text-gray-500 mt-1">
-            今天有 3 份合同需要您的关注
+            今天有 {recentContracts.length} 份合同需要您的关注
           </p>
         </div>
         <NavLink to="/dashboard/upload">
@@ -130,7 +134,7 @@ export const Overview: React.FC = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => {
-          const Icon = stat.icon;
+          const Icon = iconMap[stat.icon] || FileText;
           return (
             <HolographicCard key={index} className="p-5">
               <div className="flex items-start justify-between">
@@ -168,33 +172,38 @@ export const Overview: React.FC = () => {
               <ArrowRight className="w-4 h-4" />
             </NavLink>
           </div>
-
-          <div className="space-y-3">
-            {recentContracts.map((contract) => (
-              <div 
-                key={contract.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-lime/10 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-lime" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-charcoal">{contract.name}</p>
-                    <p className="text-sm text-gray-400">{contract.date}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {contract.risks > 0 && (
-                    <span className="flex items-center gap-1 text-sm text-orange-500">
-                      <AlertTriangle className="w-4 h-4" />
-                      {contract.risks} 个风险
-                    </span>
-                  )}
-                  {getStatusBadge(contract.status)}
-                </div>
-              </div>
-            ))}
+          
+          <div className="space-y-4">
+            {recentContracts.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">暂无最近合同</p>
+            ) : (
+                recentContracts.map((contract) => (
+                  <NavLink 
+                    key={contract.id}
+                    to={`/dashboard/contracts`}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-lime/10 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-lime" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-charcoal">{contract.name}</h3>
+                        <p className="text-sm text-gray-400">{contract.date}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {contract.risks > 0 && (
+                        <div className="flex items-center gap-1 text-orange-500 text-sm">
+                          <AlertTriangle className="w-4 h-4" />
+                          <span>{contract.risks} 个风险</span>
+                        </div>
+                      )}
+                      {getStatusBadge(contract.status)}
+                    </div>
+                  </NavLink>
+                ))
+            )}
           </div>
         </div>
 
@@ -212,18 +221,22 @@ export const Overview: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {recentRisks.map((risk) => (
-              <div 
-                key={risk.id}
-                className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <p className="font-medium text-charcoal text-sm">{risk.title}</p>
-                  {getRiskBadge(risk.level)}
-                </div>
-                <p className="text-xs text-gray-400">{risk.contract}</p>
-              </div>
-            ))}
+            {recentRisks.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">暂无待处理风险</p>
+            ) : (
+                recentRisks.map((risk) => (
+                  <div 
+                    key={risk.id}
+                    className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="font-medium text-charcoal text-sm">{risk.title}</p>
+                      {getRiskBadge(risk.level)}
+                    </div>
+                    <p className="text-xs text-gray-400">{risk.contract}</p>
+                  </div>
+                ))
+            )}
           </div>
 
           {/* AI Insight */}

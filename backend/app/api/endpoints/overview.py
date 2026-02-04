@@ -90,7 +90,7 @@ def get_overview_data(
             "name": c.name,
             "status": c.status,
             "risks": risk_count,
-            "date": c.upload_date.strftime("%Y-%m-%d") if c.upload_date else ""
+            "date": c.upload_date.strftime("%Y-%m-%d %H:%M:%S") if c.upload_date else ""
         })
         
     # 3. Recent Risks (Top 3)

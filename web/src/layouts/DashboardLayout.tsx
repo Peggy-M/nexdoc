@@ -14,7 +14,8 @@ import {
   X,
   ChevronDown,
   LogOut,
-  User
+  User,
+  BookOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +24,7 @@ const sidebarItems = [
   { name: '合同管理', path: '/dashboard/contracts', icon: FileText },
   { name: '上传合同', path: '/dashboard/upload', icon: Upload },
   { name: '风险中心', path: '/dashboard/risks', icon: AlertTriangle },
+  { name: '知识库', path: '/dashboard/knowledge', icon: BookOpen },
   { name: '团队协作', path: '/dashboard/team', icon: Users },
   { name: '档案库', path: '/dashboard/archive', icon: Database },
   { name: '设置', path: '/dashboard/settings', icon: Settings },

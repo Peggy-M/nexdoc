@@ -11,6 +11,7 @@ import { Risks } from '@/pages/dashboard/Risks';
 import { Team } from '@/pages/dashboard/Team';
 import { Archive } from '@/pages/dashboard/Archive';
 import { Settings } from '@/pages/dashboard/Settings';
+import { Knowledge } from '@/pages/dashboard/Knowledge';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -49,6 +50,7 @@ function App() {
           <Route path="risks" element={<Risks />} />
           <Route path="team" element={<Team />} />
           <Route path="archive" element={<Archive />} />
+          <Route path="knowledge" element={<Knowledge />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         

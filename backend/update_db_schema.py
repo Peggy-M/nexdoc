@@ -1,6 +1,6 @@
 from app.core.database import engine, Base
 from sqlalchemy import text
-from app.models import user, activity # Import to register
+from app.models import user, activity, knowledge # Import to register
 
 def update_schema():
     print("Creating new tables...")
