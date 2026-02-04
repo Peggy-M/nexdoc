@@ -20,35 +20,14 @@ interface RiskItem {
   title: string;
   description: string;
   suggestion: string;
+  clause?: string;
 }
-
-const mockRisks: RiskItem[] = [
-  {
-    id: 1,
-    type: 'high',
-    title: '违约金比例过高',
-    description: '第 8.2 条款约定的违约金比例为合同金额的 30%，超过法定合理范围。',
-    suggestion: '建议调整为不超过合同金额的 10%，以符合司法实践标准。',
-  },
-  {
-    id: 2,
-    type: 'medium',
-    title: '争议解决条款缺失',
-    description: '合同未明确约定争议解决方式和管辖法院。',
-    suggestion: '建议补充仲裁或诉讼条款，明确管辖地和适用法律。',
-  },
-  {
-    id: 3,
-    type: 'low',
-    title: '通知送达方式不明确',
-    description: '第 12 条约定的通知方式较为笼统。',
-    suggestion: '建议明确电子邮件、快递等具体送达方式和生效时间。',
-  },
-];
 
 export const DemoSection: React.FC = () => {
   const [step, setStep] = useState<'upload' | 'analyzing' | 'results'>('upload');
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [uploadedFileId, setUploadedFileId] = useState<number | null>(null);
+  const [risks, setRisks] = useState<RiskItem[]>([]);
   const [selectedRisk, setSelectedRisk] = useState<RiskItem | null>(null);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,35 +36,95 @@ export const DemoSection: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Clear the input value to allow selecting the same file again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
       setUploadedFile(file.name);
-      startAnalysis();
+      await uploadFile(file);
     }
   };
 
-  const startAnalysis = () => {
-    setStep('analyzing');
-    setAnalysisProgress(0);
+  const uploadFile = async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+          // 这里的上传没有做进度条，直接进入分析阶段展示“分析中”
+          // 但为了用户体验，我们在上传时可以先不切换界面，或者加一个简单的 loading
+          // DemoSection 的设计是上传即进入分析界面
+          setStep('analyzing');
+          setAnalysisProgress(10);
+
+          const response = await fetch('/api/v1/contracts/upload', {
+              method: 'POST',
+              body: formData,
+          });
+
+          if (!response.ok) {
+              throw new Error('Upload failed');
+          }
+
+          const data = await response.json();
+          setUploadedFileId(data.id);
+          
+          // 上传完成后开始分析
+          startAnalysis(data.id);
+
+      } catch (error) {
+          console.error("Upload error:", error);
+          alert("上传失败，请重试");
+          setStep('upload');
+      }
+  };
+
+  const startAnalysis = async (id: number) => {
+    setAnalysisProgress(30);
     
+    // 模拟一个进度条动画，让用户感觉 AI 正在思考
     const interval = setInterval(() => {
-      setAnalysisProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setStep('results');
-          return 100;
+      setAnalysisProgress(prev => (prev < 90 ? prev + 5 : prev));
+    }, 100);
+
+    try {
+        const response = await fetch(`/api/v1/contracts/${id}/analysis`);
+        
+        if (!response.ok) {
+            throw new Error("Analysis failed");
         }
-        return prev + 5;
-      });
-    }, 150);
+
+        const data = await response.json();
+        
+        clearInterval(interval);
+        setAnalysisProgress(100);
+
+        setTimeout(() => {
+            setRisks(data.results);
+            setStep('results');
+        }, 500);
+
+    } catch (error) {
+        clearInterval(interval);
+        console.error("Analysis error:", error);
+        alert("分析失败，请重试");
+        setStep('upload');
+    }
   };
 
   const resetDemo = () => {
     setStep('upload');
     setUploadedFile(null);
+    setUploadedFileId(null);
     setSelectedRisk(null);
     setAnalysisProgress(0);
+    setRisks([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleFixAll = () => {
@@ -260,7 +299,7 @@ export const DemoSection: React.FC = () => {
 
                   {/* Risk items */}
                   <div className="space-y-3">
-                    {mockRisks.map((risk) => (
+                    {risks.map((risk) => (
                       <button
                         key={risk.id}
                         onClick={() => setSelectedRisk(risk)}
@@ -363,13 +402,14 @@ export const DemoSection: React.FC = () => {
                           <div className="bg-red-50 rounded-xl p-4">
                             <h5 className="text-xs font-medium text-red-600 mb-2">原文</h5>
                             <p className="text-sm text-gray-600 line-through">
-                              违约金为合同金额的 30%
+                              {selectedRisk.clause || "（未提取到原文）"}
                             </p>
                           </div>
                           <div className="bg-green-50 rounded-xl p-4">
                             <h5 className="text-xs font-medium text-green-600 mb-2">建议修改</h5>
                             <p className="text-sm text-gray-600">
-                              违约金为合同金额的 10%
+                              {/* 简单起见，这里复用 suggestion，实际可能需要后端返回具体的修改后条款 */}
+                              {selectedRisk.suggestion}
                             </p>
                           </div>
                         </div>
