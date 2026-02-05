@@ -60,7 +60,7 @@ export const DemoSection: React.FC = () => {
           setStep('analyzing');
           setAnalysisProgress(10);
 
-          const response = await fetch('/api/v1/contracts/upload', {
+          const response = await fetch('/api/v1/demo/upload', {
               method: 'POST',
               body: formData,
           });
@@ -83,36 +83,45 @@ export const DemoSection: React.FC = () => {
   };
 
   const startAnalysis = async (id: number) => {
-    setAnalysisProgress(30);
+    setAnalysisProgress(0);
+    let currentProgress = 0;
     
-    // 模拟一个进度条动画，让用户感觉 AI 正在思考
-    const interval = setInterval(() => {
-      setAnalysisProgress(prev => (prev < 90 ? prev + 5 : prev));
-    }, 100);
-
-    try {
-        const response = await fetch(`/api/v1/contracts/${id}/analysis`);
+    // Polling function
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/v1/demo/${id}/analysis`);
+        if (!response.ok) throw new Error("Analysis failed");
         
-        if (!response.ok) {
-            throw new Error("Analysis failed");
-        }
-
         const data = await response.json();
         
-        clearInterval(interval);
-        setAnalysisProgress(100);
-
-        setTimeout(() => {
-            setRisks(data.results);
-            setStep('results');
-        }, 500);
-
-    } catch (error) {
-        clearInterval(interval);
+        if (data.status === 'completed') {
+          setAnalysisProgress(100);
+          setRisks(data.results);
+          if (data.results && data.results.length > 0) {
+            setSelectedRisk(data.results[0]);
+          }
+          setTimeout(() => setStep('results'), 500);
+        } else if (data.status === 'failed') {
+          alert("分析失败，请重试");
+          setStep('upload');
+        } else {
+          // Continue polling
+          // Fake progress increment up to 90%
+          if (currentProgress < 90) {
+            currentProgress += (90 - currentProgress) / 10; // Decelerating progress
+            setAnalysisProgress(Math.floor(currentProgress));
+          }
+          setTimeout(poll, 1000);
+        }
+      } catch (error) {
         console.error("Analysis error:", error);
-        alert("分析失败，请重试");
+        alert("分析出错");
         setStep('upload');
-    }
+      }
+    };
+
+    // Start polling
+    poll();
   };
 
   const resetDemo = () => {
@@ -201,17 +210,36 @@ export const DemoSection: React.FC = () => {
                 <div className="mt-8">
                   <p className="text-sm text-gray-400 mb-4">或者试用示例合同：</p>
                   <div className="flex flex-wrap gap-3">
-                    {['服务协议模板', '劳动合同示例', '采购合同范本'].map((name, i) => (
+                    {['服务协议模板.pdf', '劳动合同示例.pdf', '采购合同范本.pdf'].map((filename, i) => (
                       <button
                         key={i}
-                        onClick={() => {
-                          setUploadedFile(name + '.pdf');
-                          startAnalysis();
+                        onClick={async () => {
+                          setUploadedFile(filename);
+                          setStep('analyzing');
+                          setAnalysisProgress(10);
+                          
+                          try {
+                              // Call demo import endpoint
+                              const response = await fetch(`/api/v1/demo/samples/${filename}/import`, {
+                                  method: 'POST'
+                              });
+                              
+                              if (!response.ok) throw new Error('Import failed');
+                              
+                              const data = await response.json();
+                              setUploadedFileId(data.id);
+                              startAnalysis(data.id);
+                              
+                          } catch (err) {
+                              console.error(err);
+                              alert("导入示例失败");
+                              setStep('upload');
+                          }
                         }}
                         className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-lime/10 rounded-lg transition-colors"
                       >
                         <FileText className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{name}</span>
+                        <span className="text-sm text-gray-600">{filename.replace('.pdf', '')}</span>
                       </button>
                     ))}
                   </div>
@@ -284,15 +312,21 @@ export const DemoSection: React.FC = () => {
                   {/* Summary cards */}
                   <div className="grid grid-cols-3 gap-2 mb-6">
                     <div className="bg-red-50 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-red-500">1</div>
+                      <div className="text-2xl font-bold text-red-500">
+                        {risks.filter(r => r.type === 'high').length}
+                      </div>
                       <div className="text-xs text-red-400">高风险</div>
                     </div>
                     <div className="bg-orange-50 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-orange-500">1</div>
+                      <div className="text-2xl font-bold text-orange-500">
+                        {risks.filter(r => r.type === 'medium').length}
+                      </div>
                       <div className="text-xs text-orange-400">中风险</div>
                     </div>
                     <div className="bg-green-50 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-green-500">1</div>
+                      <div className="text-2xl font-bold text-green-500">
+                        {risks.filter(r => r.type === 'low').length}
+                      </div>
                       <div className="text-xs text-green-400">低风险</div>
                     </div>
                   </div>

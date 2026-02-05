@@ -78,9 +78,9 @@ class AIService:
         log.info(f"Split text into {len(chunks)} chunks.")
         return {"text_chunks": chunks}
 
-    def _map_risks_node(self, state: AgentState):
+    async def _map_risks_node(self, state: AgentState):
         """Node: Analyze each chunk in parallel."""
-        log.info("--- Node: Mapping Risks (Parallel Analysis) ---")
+        log.info("--- Node: Mapping Risks (Parallel Analysis - Async) ---")
         if state.get("error"):
             return {"chunk_risks": []}
             
@@ -114,10 +114,10 @@ class AIService:
             ])
 
         try:
-            # Execute in parallel using batch
-            # Note: Depending on the LLM provider's rate limits, we might need to throttle this.
-            # For now, we assume the provider can handle the concurrency of typical contract chunks (e.g., < 10 chunks).
-            responses = self.llm.batch(prompts)
+            # Execute in parallel using asyncio.gather
+            # This allows for higher concurrency than the default batch thread pool
+            tasks = [self.llm.ainvoke(p) for p in prompts]
+            responses = await asyncio.gather(*tasks)
             
             all_chunk_risks = []
             for response in responses:
@@ -253,7 +253,16 @@ class AIService:
         }
         
         try:
-            final_state = self.workflow.invoke(initial_state)
+            # Use asyncio.run to execute the async graph
+            # This allows us to use async nodes (like _map_risks_node) even if the caller is sync
+            if os.name == 'nt':
+                # Policy fix for Windows loops if needed
+                try:
+                    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+                except Exception:
+                    pass
+            
+            final_state = asyncio.run(self.workflow.ainvoke(initial_state))
             
             if final_state.get("error"):
                 log.info(f"Workflow Error: {final_state['error']}")

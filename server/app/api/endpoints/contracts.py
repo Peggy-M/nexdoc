@@ -371,3 +371,81 @@ async def stream_analysis_progress(
 
     return EventSourceResponse(event_generator())
 
+# --- Sample Contracts Endpoints ---
+
+SAMPLES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../assets/sample_contracts"))
+
+@router.get("/samples")
+async def get_samples():
+    """
+    List available sample contracts for demo.
+    """
+    if not os.path.exists(SAMPLES_DIR):
+        return []
+    
+    samples = []
+    for filename in os.listdir(SAMPLES_DIR):
+        if filename.endswith(".pdf"):
+            samples.append({
+                "filename": filename,
+                "name": filename.replace(".pdf", "")
+            })
+    return samples
+
+@router.get("/samples/{filename}/download")
+async def download_sample(filename: str):
+    """
+    Download a sample contract.
+    """
+    file_path = os.path.join(SAMPLES_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Sample not found")
+        
+    return FileResponse(
+        file_path,
+        media_type='application/pdf',
+        filename=filename
+    )
+
+@router.post("/samples/{filename}/import", response_model=UploadResponse)
+async def import_sample(
+    filename: str,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Import a sample contract to user's workspace.
+    """
+    sample_path = os.path.join(SAMPLES_DIR, filename)
+    if not os.path.exists(sample_path):
+        raise HTTPException(status_code=404, detail="Sample not found")
+        
+    # Copy to uploads
+    safe_filename = f"{int(time.time())}_{filename}"
+    dest_path = os.path.join(UPLOAD_DIR, safe_filename)
+    
+    shutil.copy2(sample_path, dest_path)
+    
+    file_size_bytes = os.path.getsize(dest_path)
+    file_size_str = get_file_size(file_size_bytes)
+    
+    # Create Contract
+    db_contract = Contract(
+        name=filename,
+        file_path=dest_path,
+        file_size=file_size_str,
+        status="pending",
+        user_id=current_user.id,
+        contract_type="Sample"
+    )
+    db.add(db_contract)
+    db.commit()
+    db.refresh(db_contract)
+    
+    return {
+        "id": db_contract.id,
+        "name": db_contract.name,
+        "size": db_contract.file_size,
+        "status": db_contract.status
+    }
+
