@@ -228,7 +228,7 @@ async def export_pdf(
     output_path = os.path.join(UPLOAD_DIR, output_filename)
     
     # Generate PDF
-    success = export_service.generate_pdf(
+    success = await export_service.generate_pdf(
         contract_name=contract.name,
         analysis_results=contract.analysis_results or [],
         output_path=output_path

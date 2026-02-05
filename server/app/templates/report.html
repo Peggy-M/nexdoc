@@ -2,236 +2,421 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>合同法律风险审查报告</title>
     <style>
-        @page {
-            size: A4;
-            margin: 2cm;
+        /* 引入更现代的字体栈 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+        :root {
+            --primary-color: #2563eb;
+            --danger-color: #dc2626;
+            --warning-color: #d97706;
+            --success-color: #059669;
+            --text-main: #1f2937;
+            --text-secondary: #4b5563;
+            --bg-page: #ffffff;
         }
 
-        @font-face {
-            font-family: "ChineseFont";
-            src: url("data:font/truetype;base64,{{ font_data }}");
+        @media print {
+            @page {
+                margin: 1.5cm;
+                size: A4;
+            }
+            body {
+                background-color: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+            }
+        }
+
+        html, body {
+            background-color: #ffffff !important;
+            margin: 0;
+            padding: 0;
+            width: 100%;
         }
 
         body {
-            font-family: "ChineseFont", sans-serif;
-            color: #2d3748;
-            line-height: 1.6;
+            font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            color: var(--text-main);
+            line-height: 1.5;
+            font-size: 14px;
         }
 
+        /* 封面优化 */
         .cover {
-            text-align: center;
-            padding-top: 5cm;
+            height: 90vh; /* 稍微减小高度，避免溢出 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #ffffff; /* 移除渐变背景，保持简洁 */
+            margin-bottom: 0;
             page-break-after: always;
         }
 
-        .cover h1 {
-            font-size: 36pt;
-            color: #1a202c;
+        .cover-logo {
+            font-size: 32pt;
+            font-weight: 800;
+            color: var(--primary-color);
             margin-bottom: 2cm;
+            letter-spacing: 4px;
+            text-shadow: 2px 2px 4px rgba(37, 99, 235, 0.1);
         }
 
-        .cover-info {
-            font-size: 14pt;
-            margin-bottom: 1cm;
+        .cover-title {
+            font-size: 36pt;
+            font-weight: 900;
+            color: #111827;
+            margin-bottom: 3cm;
+            position: relative;
+            padding-bottom: 30px;
+        }
+        
+        .cover-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 6px;
+            background: var(--primary-color);
+            border-radius: 3px;
         }
 
-        .cover-info span {
-            color: #718096;
+        .cover-info-card {
+            background: transparent;
+            padding: 20px 0;
+            width: 100%;
+            max-width: 600px;
+            border-top: 2px solid #f3f4f6;
+            border-bottom: 2px solid #f3f4f6;
         }
 
+        .cover-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 1px dashed #e5e7eb;
+            padding-bottom: 10px;
+        }
+        
+        .cover-info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .cover-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        
+        .cover-value {
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* 标题样式 */
         h1 {
             font-size: 24pt;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 10px;
-            margin-top: 30px;
-            color: #2d3748;
+            color: #111827;
+            border-left: 8px solid var(--primary-color);
+            padding-left: 20px;
+            margin-top: 60px;
+            margin-bottom: 40px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
         }
 
-        h2 {
-            font-size: 18pt;
-            margin-top: 25px;
-            margin-bottom: 15px;
-            color: #4a5568;
-        }
-
-        .summary-cards {
-            display: block; /* Table-like layout for xhtml2pdf */
-            width: 100%;
-            margin-top: 20px;
+        /* 概览卡片优化 */
+        .summary-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 40px;
         }
 
         .summary-card {
-            display: inline-block;
-            width: 30%;
-            padding: 15px;
-            margin-right: 2%;
-            border-radius: 8px;
+            flex: 1;
+            padding: 25px;
+            border-radius: 16px;
             text-align: center;
+            color: white;
+            transition: transform 0.2s;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
-        .summary-card.high { background-color: #fff5f5; border: 1px solid #fed7d7; }
-        .summary-card.medium { background-color: #fffaf0; border: 1px solid #feebc8; }
-        .summary-card.low { background-color: #f0fff4; border: 1px solid #c6f6d5; }
+        .summary-card.high { 
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+        }
+        .summary-card.medium { 
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
+        }
+        .summary-card.low { 
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+        }
 
         .summary-number {
-            font-size: 32pt;
-            font-weight: bold;
+            font-size: 42pt;
+            font-weight: 800;
             display: block;
+            margin-bottom: 5px;
+            line-height: 1;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
         }
 
         .summary-label {
-            font-size: 12pt;
-            color: #718096;
+            font-size: 14pt;
+            font-weight: 500;
+            opacity: 0.95;
         }
 
-        .high .summary-number { color: #e53e3e; }
-        .medium .summary-number { color: #dd6b20; }
-        .low .summary-number { color: #38a169; }
-
+        /* 风险详情卡片优化 */
         .risk-item {
-            margin-bottom: 30px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            background-color: #fff;
+            /* 移除卡片背景和边框，使其看起来是文档的一部分 */
+            background-color: transparent; 
+            border-radius: 0;
+            margin-bottom: 30px; /* 减小间距 */
+            box-shadow: none;
+            overflow: visible;
+            border: none;
+            border-bottom: 1px solid #eee; /* 仅保留底部分隔线 */
             page-break-inside: avoid;
+            padding-bottom: 20px;
         }
 
         .risk-header {
-            margin-bottom: 15px;
-            border-bottom: 1px solid #edf2f7;
-            padding-bottom: 10px;
+            padding: 10px 0; /* 减少内边距 */
+            background-color: transparent; /* 移除标题背景 */
+            border-bottom: none;
+            display: flex;
+            align-items: center;
         }
 
+        /* 风险标签 - 现代柔和风格 */
         .risk-tag {
-            display: inline-block;
             padding: 4px 12px;
-            border-radius: 9999px;
+            border-radius: 4px;
             font-size: 10pt;
-            font-weight: bold;
-            color: #fff;
-            margin-right: 10px;
-            vertical-align: middle;
+            font-weight: 700;
+            margin-right: 15px;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid transparent;
         }
 
-        .risk-tag.high { background-color: #e53e3e; }
-        .risk-tag.medium { background-color: #dd6b20; }
-        .risk-tag.low { background-color: #38a169; }
+        .risk-tag.high { 
+            background-color: #fef2f2; 
+            color: #b91c1c; 
+            border-color: #fecaca;
+        }
+        .risk-tag.medium { 
+            background-color: #fffbeb; 
+            color: #b45309; 
+            border-color: #fde68a;
+        }
+        .risk-tag.low { 
+            background-color: #ecfdf5; 
+            color: #047857; 
+            border-color: #a7f3d0;
+        }
+        
+        .risk-tag::before {
+            content: '●';
+            font-size: 0.8em;
+            margin-right: 6px;
+        }
 
         .risk-title {
-            font-size: 14pt;
-            font-weight: bold;
-            color: #2d3748;
-            vertical-align: middle;
+            font-size: 14pt; /* 稍微减小标题字号 */
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .risk-content {
+            padding: 10px 0; /* 减少内边距 */
         }
 
         .section-label {
             font-size: 10pt;
-            font-weight: bold;
-            color: #718096;
-            margin-bottom: 5px;
-            margin-top: 15px;
+            font-weight: 700;
+            color: #6b7280;
             text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-label:first-child { margin-top: 0; }
+        
+        .section-icon {
+            margin-right: 8px;
+            font-size: 1.2em;
         }
 
         .clause-box {
-            background-color: #f7fafc;
-            border-left: 4px solid #cbd5e0;
-            padding: 10px 15px;
+            background-color: #f9fafb; /* 非常淡的灰色，甚至可以是透明 */
+            border-left: 3px solid #94a3b8;
+            padding: 15px; /* 减少 padding */
+            border-radius: 2px;
+            font-family: "Georgia", "SimSun", serif;
+            color: #334155;
+            font-size: 11pt;
+            line-height: 1.6;
             margin-bottom: 15px;
-            font-family: "ChineseFont", serif;
-            color: #4a5568;
             font-style: italic;
+            position: relative;
+        }
+        
+        .clause-box::before {
+            content: '"';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 3em;
+            color: #e2e8f0;
+            font-family: serif;
+            line-height: 0;
+            z-index: 0;
+        }
+        
+        .clause-content {
+            position: relative;
+            z-index: 1;
         }
 
         .analysis-text {
-            color: #2d3748;
+            color: #374151;
             margin-bottom: 15px;
+            font-size: 11pt;
+            line-height: 1.6;
+            text-align: justify;
         }
 
         .suggestion-box {
-            background-color: #f0fff4;
-            border: 1px solid #c6f6d5;
-            border-radius: 6px;
+            background: #f0fdf4; /* 纯色背景，移除渐变 */
+            border: 1px solid #bbf7d0;
+            border-left: 3px solid var(--success-color);
+            border-radius: 4px;
             padding: 15px;
-            color: #2f855a;
+            color: #15803d;
+            font-size: 11pt;
+            line-height: 1.6;
+            display: flex;
+            align-items: start;
         }
+        
+        .suggestion-icon {
+            font-size: 18pt;
+            margin-right: 15px;
+            margin-top: -4px; /* 图标微调 */
+        }
+        
+        .footer {
+            text-align: center;
+            font-size: 9pt;
+            color: #9ca3af;
+            margin-top: 60px;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 20px;
+        }
+
     </style>
 </head>
 <body>
+
     <!-- 封面 -->
     <div class="cover">
-        <h1>合同法律风险审查报告</h1>
-        <div style="height: 2cm;"></div>
-        <div class="cover-info">
-            <span>合同名称：</span><br>
-            {{ contract_name }}
-        </div>
-        <div class="cover-info">
-            <span>审查日期：</span><br>
-            {{ date }}
-        </div>
-        <div class="cover-info">
-            <span>审查工具：</span><br>
-            LexGuard AI 智能审查系统
+        <div class="cover-logo">NEXDOC AI</div>
+        <div class="cover-title">合同法律风险审查报告</div>
+        
+        <div class="cover-info-card">
+            <div class="cover-info-item">
+                <span class="cover-label">合同名称</span>
+                <span class="cover-value">{{ contract_name }}</span>
+            </div>
+            <div class="cover-info-item">
+                <span class="cover-label">审查日期</span>
+                <span class="cover-value">{{ date }}</span>
+            </div>
+            <div class="cover-info-item">
+                <span class="cover-label">生成工具</span>
+                <span class="cover-value">NexDoc AI 智能审查系统</span>
+            </div>
         </div>
     </div>
 
-    <!-- 目录/概览 -->
+    <!-- 概览页 -->
     <h1>一、风险概览</h1>
-    <div style="margin-bottom: 20px;">
-        <p>本次审查共发现 <strong>{{ total_risks }}</strong> 处法律风险点。</p>
+    <div style="font-size: 13pt; margin-bottom: 40px; color: #4b5563; line-height: 1.8;">
+        本次审查共发现 <strong style="color: var(--danger-color); font-size: 1.2em;">{{ total_risks }}</strong> 处法律风险点。
+        <br>请重点关注高风险条款，建议在签署前完成修改。
     </div>
 
-    <table style="width: 100%; border-spacing: 10px;">
-        <tr>
-            <td class="summary-card high">
-                <span class="summary-number">{{ high_count }}</span>
-                <span class="summary-label">高风险</span>
-            </td>
-            <td class="summary-card medium">
-                <span class="summary-number">{{ medium_count }}</span>
-                <span class="summary-label">中风险</span>
-            </td>
-            <td class="summary-card low">
-                <span class="summary-number">{{ low_count }}</span>
-                <span class="summary-label">低风险</span>
-            </td>
-        </tr>
-    </table>
+    <div class="summary-container">
+        <div class="summary-card high">
+            <span class="summary-number">{{ high_count }}</span>
+            <span class="summary-label">高风险</span>
+        </div>
+        <div class="summary-card medium">
+            <span class="summary-number">{{ medium_count }}</span>
+            <span class="summary-label">中风险</span>
+        </div>
+        <div class="summary-card low">
+            <span class="summary-number">{{ low_count }}</span>
+            <span class="summary-label">低风险</span>
+        </div>
+    </div>
+
+    <div style="height: 60px;"></div>
 
     <!-- 详细分析 -->
     <h1>二、详细审查意见</h1>
 
-    {% for result in analysis_results %}
+    {% for risk in analysis_results %}
     <div class="risk-item">
         <div class="risk-header">
-            <span class="risk-tag {{ result.type }}">
-                {% if result.type == 'high' %}高风险{% endif %}
-                {% if result.type == 'medium' %}中风险{% endif %}
-                {% if result.type == 'low' %}低风险{% endif %}
+            <span class="risk-tag {{ risk.type }}">
+                {% if risk.type == 'high' %}高风险{% elif risk.type == 'medium' %}中风险{% else %}低风险{% endif %}
             </span>
-            <span class="risk-title">{{ result.title }}</span>
+            <span class="risk-title">{{ risk.title }}</span>
         </div>
 
-        <div class="section-label">相关条款</div>
-        <div class="clause-box">
-            "{{ result.clause }}"
-        </div>
+        <div class="risk-content">
+            <div class="section-label">
+                <span class="section-icon">⚖️</span> 相关条款
+            </div>
+            <div class="clause-box">
+                <div class="clause-content">
+                    {{ risk.clause | default("条款内容...") }}
+                </div>
+            </div>
 
-        <div class="section-label">风险分析</div>
-        <div class="analysis-text">
-            {{ result.description }}
-        </div>
+            <div class="section-label">
+                <span class="section-icon">🕵️</span> 风险分析
+            </div>
+            <div class="analysis-text">
+                {{ risk.description }}
+            </div>
 
-        <div class="section-label">修改建议</div>
-        <div class="suggestion-box">
-            <strong>建议：</strong> {{ result.suggestion }}
+            <div class="section-label">
+                <span class="section-icon">💡</span> 修改建议
+            </div>
+            <div class="suggestion-box">
+                <div>{{ risk.suggestion }}</div>
+            </div>
         </div>
     </div>
     {% endfor %}
+
+    <div class="footer">
+        NexDoc AI 智能审查报告 - 生成于 {{ date }}
+    </div>
 
 </body>
 </html>

@@ -1,52 +1,55 @@
 import os
-from xhtml2pdf import pisa
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from app.utils.log_utils import log
-
+import sys
+from playwright.sync_api import sync_playwright
 
 def generate_pdf():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     html_path = os.path.join(current_dir, 'resource', 'test.html')
     output_path = os.path.join(current_dir, 'resource', 'test.pdf')
-
-    # 1. 获取字体的绝对路径
-    font_path = os.path.normpath("F:/work-space/code/NEXDOC_AI/server/app/assets/fonts/simhei.ttf")
-
-    if not os.path.exists(font_path):
-        log.error(f"找不到字体文件: {font_path}")
-        return False
+    
+    # Convert file path to file URL
+    # Playwright expects file:///C:/path/to/file on Windows
+    file_url = f"file:///{html_path.replace(os.sep, '/')}"
+    
+    print(f"DEBUG: HTML URL: {file_url}")
+    print(f"DEBUG: Output Path: {output_path}")
 
     try:
-        # --- 核心修复：手动向底层引擎注册字体 ---
-        # 这样 PDF 引擎就直接记住了 "ChineseFont" 对应那个物理文件
-        # 不再需要 CSS 去加载，也就不会产生 Temp 文件
-        pdfmetrics.registerFont(TTFont('ChineseFont', font_path))
-        log.info("字体注册成功！")
-
-        # 2. 读取 HTML
-        with open(html_path, "r", encoding="utf-8") as f:
-            html_content = f.read()
-
-        # 3. 生成 PDF
-        with open(output_path, "wb") as output_file:
-            pisa_status = pisa.CreatePDF(
-                src=html_content,
-                dest=output_file,
-                encoding='utf-8'
+        with sync_playwright() as p:
+            # Launch browser
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            
+            # Navigate to the local HTML file
+            # wait_until="networkidle" ensures all resources (like fonts) are loaded
+            page.goto(file_url, wait_until="networkidle")
+            
+            # Generate PDF
+            # format='A4' handles the page size
+            # print_background=True ensures background colors/images are printed
+            page.pdf(
+                path=output_path,
+                format="A4",
+                print_background=True,
+                margin={
+                    "top": "1.5cm",
+                    "bottom": "1.5cm",
+                    "left": "1.5cm",
+                    "right": "1.5cm"
+                },
+                display_header_footer=False
             )
-
-        if pisa_status.err:
-            log.info(f"PDF generation error: {pisa_status.err}")
-            return False
-
-        log.info(f"PDF 成功生成到: {output_path}")
+            
+            browser.close()
+            
+        print(f"SUCCESS: PDF generated at {output_path}")
         return True
-
+        
     except Exception as e:
-        log.error(f"Failed to build PDF: {e}")
+        print(f"ERROR: Failed to generate PDF: {e}")
+        import traceback
+        traceback.print_exc()
         return False
-
 
 if __name__ == "__main__":
     generate_pdf()

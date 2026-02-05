@@ -1,4 +1,10 @@
 import logging
+import asyncio
+import platform
+
+# Fix for Playwright on Windows: ensure ProactorEventLoop is used by sub-processes (uvicorn reload)
+if platform.system() == 'Windows':
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
