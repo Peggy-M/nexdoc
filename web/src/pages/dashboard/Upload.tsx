@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Upload, 
   FileText, 
@@ -65,6 +66,7 @@ const mockAnalysisResults: AnalysisResult[] = [
 ];
 
 export const UploadPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [analysisStep, setAnalysisStep] = useState<'upload' | 'analyzing' | 'results'>('upload');
@@ -72,6 +74,99 @@ export const UploadPage: React.FC = () => {
   const [selectedRisk, setSelectedRisk] = useState<AnalysisResult | null>(null);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check for contractId in URL on mount
+  useEffect(() => {
+    const contractId = searchParams.get('id');
+    const contractName = searchParams.get('name');
+    
+    if (contractId) {
+      const id = parseInt(contractId);
+      // Simulate adding the file to the list as "completed" (ready for analysis)
+      setFiles([{
+        id: id,
+        name: contractName || `Contract #${contractId}`,
+        size: 'Unknown', 
+        progress: 100,
+        status: 'completed'
+      }]);
+
+      // Auto-fetch analysis results if contract ID is present
+      const fetchAnalysis = async () => {
+        try {
+          const token = localStorage.getItem('NexDoc_token');
+          const response = await fetch(`/api/v1/contracts/${id}/analysis`, {
+             headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'analyzed' || data.status === 'completed') {
+                setAnalysisResults(data.results || []);
+                setAnalysisStep('results');
+                if (data.results && data.results.length > 0) {
+                    setSelectedRisk(data.results[0]);
+                }
+            } else if (data.status === 'analyzing') {
+                setAnalysisStep('analyzing');
+                connectSSE(id);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to auto-load analysis:", error);
+        }
+      };
+      
+      fetchAnalysis();
+    }
+  }, [searchParams]);
+
+  const connectSSE = (contractId: number) => {
+    const token = localStorage.getItem('NexDoc_token');
+    const eventSource = new EventSource(`/api/v1/contracts/${contractId}/stream?token=${token}`);
+    
+    eventSource.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            if (data.status === 'analyzing') {
+                setAnalysisProgress(data.progress);
+            } else if (data.status === 'analyzed' || data.status === 'completed') {
+                eventSource.close();
+                setAnalysisProgress(100);
+                setTimeout(async () => {
+                    // Fetch final results
+                    const res = await fetch(`/api/v1/contracts/${contractId}/analysis`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const resultData = await res.json();
+                        setAnalysisResults(resultData.results || []);
+                        setAnalysisStep('results');
+                        if (resultData.results?.length > 0) {
+                            setSelectedRisk(resultData.results[0]);
+                        }
+                    }
+                }, 500);
+            } else if (data.status === 'failed') {
+                eventSource.close();
+                alert("分析失败");
+                setAnalysisStep('upload');
+            }
+        } catch (e) {
+            console.error("SSE Parse Error", e);
+        }
+    };
+
+    eventSource.onerror = (err) => {
+        console.error("SSE Error:", err);
+        eventSource.close();
+    };
+
+    // Cleanup on unmount or when component changes? 
+    // Ideally we should track this ref and close it.
+    // For now, let's just let it close on error/completion.
+  };
+
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -149,15 +244,7 @@ export const UploadPage: React.FC = () => {
             f.id === tempId ? { ...f, progress: 100, status: 'completed', id: data.id } : f
         ));
         
-        // 如果所有文件都上传完成，延迟启动分析
-        // 这里简化逻辑：只要有一个上传成功就尝试启动分析（实际项目中可能需要等待用户点击或全部完成）
-        setTimeout(() => {
-             // 仅当是最后一个文件时自动进入分析状态? 或者让用户手动点击“开始分析”
-             // 这里保留原逻辑：自动进入分析
-             // 但原逻辑是所有文件都完成了才进入。
-             // 我们可以让用户手动点击“开始分析”按钮，或者检查是否所有文件都已完成。
-        }, 500);
-
+        // Removed auto-start analysis timeout
     } catch (error) {
         console.error("Upload error:", error);
         setFiles(prev => prev.map(f => 
@@ -166,56 +253,35 @@ export const UploadPage: React.FC = () => {
     }
   };
 
-  // 移除旧的 simulateUpload
-  // const simulateUpload = ... 
-
   const startAnalysis = async () => {
-    setAnalysisStep('analyzing');
-    setAnalysisProgress(0);
-
     // 假设我们只分析列表中的第一个已完成的文件（演示用）
-    // 实际项目中可能需要批量分析或用户选择分析
     const targetFile = files.find(f => f.status === 'completed');
     if (!targetFile) {
         alert("请先上传文件");
-        setAnalysisStep('upload');
         return;
     }
+    
+    setAnalysisStep('analyzing');
+    setAnalysisProgress(0);
 
     try {
-        // 模拟分析进度
-        const interval = setInterval(() => {
-            setAnalysisProgress(prev => prev < 90 ? prev + 5 : prev);
-        }, 500);
-
         const token = localStorage.getItem('NexDoc_token');
-        const response = await fetch(`/api/v1/contracts/${targetFile.id}/analysis`, {
+        
+        // 1. Trigger Analysis
+        await fetch(`/api/v1/contracts/${targetFile.id}/analyze`, {
+            method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
-        
-        clearInterval(interval);
-        setAnalysisProgress(100);
 
-        if (!response.ok) {
-             throw new Error("Analysis failed");
-        }
-
-        const data = await response.json();
-        
-        // 稍微延迟以显示 100%
-        setTimeout(() => {
-            setAnalysisStep('results');
-            setAnalysisResults(data.results);
-            if (data.results.length > 0) {
-              setSelectedRisk(data.results[0]);
-            }
-        }, 500);
+        // 2. Connect SSE for real-time updates
+        connectSSE(targetFile.id);
 
     } catch (error) {
-        console.error("Analysis error:", error);
-        setAnalysisStep('upload'); // 回退
+        console.error("Analysis failed:", error);
+        alert("分析启动失败，请重试");
+        setAnalysisStep('upload');
     }
   };
 

@@ -1,5 +1,6 @@
-import os
 from unstructured.partition.auto import partition
+from app.utils.log_utils import log
+
 
 class FileParser:
     @staticmethod
@@ -20,6 +21,6 @@ class FileParser:
             return text
             
         except Exception as e:
-            print(f"Error parsing file with unstructured: {e}")
+            log.info(f"Error parsing file with unstructured: {e}")
             # Fallback or re-raise depending on requirements
             return ""

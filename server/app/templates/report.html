@@ -11,7 +11,7 @@
 
         @font-face {
             font-family: "ChineseFont";
-            src: url("{{ font_path }}");
+            src: url("data:font/truetype;base64,{{ font_data }}");
         }
 
         body {
@@ -36,7 +36,7 @@
             font-size: 14pt;
             margin-bottom: 1cm;
         }
-        
+
         .cover-info span {
             color: #718096;
         }
@@ -85,7 +85,7 @@
             font-size: 12pt;
             color: #718096;
         }
-        
+
         .high .summary-number { color: #e53e3e; }
         .medium .summary-number { color: #dd6b20; }
         .low .summary-number { color: #38a169; }
@@ -204,7 +204,7 @@
 
     <!-- 详细分析 -->
     <h1>二、详细审查意见</h1>
-    
+
     {% for result in analysis_results %}
     <div class="risk-item">
         <div class="risk-header">
@@ -215,17 +215,17 @@
             </span>
             <span class="risk-title">{{ result.title }}</span>
         </div>
-        
+
         <div class="section-label">相关条款</div>
         <div class="clause-box">
             "{{ result.clause }}"
         </div>
-        
+
         <div class="section-label">风险分析</div>
         <div class="analysis-text">
             {{ result.description }}
         </div>
-        
+
         <div class="section-label">修改建议</div>
         <div class="suggestion-box">
             <strong>建议：</strong> {{ result.suggestion }}

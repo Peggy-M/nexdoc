@@ -62,7 +62,12 @@ export const Archive: React.FC = () => {
         ]);
         
         setFolders(data.folders);
-        setContracts(data.contracts);
+        // Format dates on frontend
+        const contracts = data.contracts.map((c: any) => ({
+            ...c,
+            date: c.date ? new Date(c.date + (c.date.endsWith('Z') ? '' : 'Z')).toLocaleString('zh-CN', { hour12: false }) : ''
+        }));
+        setContracts(contracts);
         setTags(data.tags);
       }
     } catch (error) {

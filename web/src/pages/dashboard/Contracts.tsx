@@ -14,6 +14,16 @@ import {
 import { cn } from '@/lib/utils';
 import { ContractDetailModal } from '@/components/ContractDetailModal';
 import { useNavigate } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Contract {
   id: number;
@@ -44,6 +54,8 @@ export const Contracts: React.FC = () => {
   const [selectedContracts, setSelectedContracts] = useState<number[]>([]);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contractsToDelete, setContractsToDelete] = useState<number[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -73,7 +85,7 @@ export const Contracts: React.FC = () => {
           type: item.contract_type || '未知类型',
           status: item.status,
           risks: item.risk_summary || { high: 0, medium: 0, low: 0 },
-          date: new Date(item.upload_date).toLocaleString('zh-CN', { hour12: false }),
+          date: new Date(item.upload_date + 'Z').toLocaleString('zh-CN', { hour12: false }),
           size: item.file_size
         }));
         setContracts(formattedContracts);
@@ -105,7 +117,7 @@ export const Contracts: React.FC = () => {
     );
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, contract: Contract) => {
     const styles: Record<string, string> = {
       analyzed: 'bg-orange-100 text-orange-600',
       pending: 'bg-gray-100 text-gray-600',
@@ -116,11 +128,31 @@ export const Contracts: React.FC = () => {
       pending: '待分析',
       completed: '已完成',
     };
-    return (
+    
+    const badge = (
       <span className={`px-3 py-1 rounded-full text-xs font-medium ${styles[status]}`}>
         {labels[status]}
       </span>
     );
+
+    if (status === 'pending') {
+      return (
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/dashboard/upload?id=${contract.id}&name=${encodeURIComponent(contract.name)}`);
+          }}
+          className="group relative cursor-pointer"
+          title="点击开始分析"
+        >
+          <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 group-hover:bg-lime group-hover:text-charcoal transition-colors duration-200">
+            {labels[status]}
+          </span>
+        </button>
+      );
+    }
+
+    return badge;
   };
 
   const getRiskSummary = (risks: { high: number; medium: number; low: number }) => {
@@ -150,9 +182,12 @@ export const Contracts: React.FC = () => {
     );
   };
 
-  const handleDelete = async (ids: number[]) => {
-    if (!window.confirm('确定要删除选中的合同吗？')) return;
+  const handleDelete = (ids: number[]) => {
+    setContractsToDelete(ids);
+    setDeleteDialogOpen(true);
+  };
 
+  const confirmDelete = async () => {
     try {
       const token = localStorage.getItem('NexDoc_token');
       if (!token) {
@@ -160,7 +195,7 @@ export const Contracts: React.FC = () => {
         return;
       }
 
-      for (const id of ids) {
+      for (const id of contractsToDelete) {
         await fetch(`/api/v1/contracts/${id}`, {
           method: 'DELETE',
           headers: {
@@ -172,6 +207,7 @@ export const Contracts: React.FC = () => {
       // Refresh list
       fetchContracts();
       setSelectedContracts([]);
+      setDeleteDialogOpen(false);
     } catch (error) {
       console.error('Failed to delete contracts:', error);
       alert('删除失败，请稍后重试');
@@ -228,6 +264,23 @@ export const Contracts: React.FC = () => {
       console.error('Download error:', error);
       alert('下载失败，请稍后重试');
     }
+  };
+
+  const fetchContractDetails = async (id: number) => {
+    try {
+      const token = localStorage.getItem('NexDoc_token');
+      const response = await fetch(`/api/v1/contracts/${id}/analysis`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Ensure we always return an array, even if results are null/undefined
+        return Array.isArray(data.results) ? data.results : [];
+      }
+    } catch (error) {
+      console.error('Failed to fetch analysis details:', error);
+    }
+    return [];
   };
 
   return (
@@ -337,15 +390,20 @@ export const Contracts: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">{contract.type}</td>
-                <td className="px-6 py-4">{getStatusBadge(contract.status)}</td>
+                <td className="px-6 py-4">{ getStatusBadge(contract.status, contract) }</td>
                 <td className="px-6 py-4">{getRiskSummary(contract.risks)}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{contract.date}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{contract.size}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center justify-end gap-2">
                     <button 
-                      onClick={() => {
-                        setSelectedContract(contract);
+                      onClick={async (e) => {
+                        e.stopPropagation(); // Stop row click
+                        const details = await fetchContractDetails(contract.id);
+                        setSelectedContract({
+                            ...contract,
+                            analysis_results: details
+                        });
                         setIsDetailOpen(true);
                       }}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -405,6 +463,23 @@ export const Contracts: React.FC = () => {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              您确定要删除选中的 {contractsToDelete.length} 个合同吗？此操作无法撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
+              确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

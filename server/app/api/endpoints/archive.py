@@ -90,7 +90,7 @@ def get_archive_data(
             "id": c.id,
             "name": c.name,
             "folder": ctype,
-            "date": c.upload_date.strftime("%Y-%m-%d") if c.upload_date else "",
+            "date": c.upload_date.isoformat() if c.upload_date else "",
             "size": c.file_size,
             "tags": tags
         })

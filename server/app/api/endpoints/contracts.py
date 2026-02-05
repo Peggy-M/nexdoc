@@ -1,18 +1,24 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
-from fastapi.responses import FileResponse
-from typing import List
-import time
-import shutil
 import os
-import uuid
+import shutil
+import time
+import asyncio
+import json
+from typing import List
+
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends, Request
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from sse_starlette.sse import EventSourceResponse
+
 from app.api import deps
-from app.models.user import User
+from app.models.activity import Activity
 from app.models.contract import Contract
-from app.schemas.contract import UploadResponse, ContractAnalysisResponse, AnalysisResult, Contract as ContractSchema
+from app.models.user import User
+from app.schemas.contract import UploadResponse, ContractAnalysisResponse, Contract as ContractSchema
 from app.services.ai_service import AIService
 from app.services.export_service import ExportService
-from app.models.activity import Activity
+from app.utils.log_utils import log
+from app.core.redis import get_redis_client
 
 router = APIRouter()
 ai_service = AIService()
@@ -33,19 +39,33 @@ def process_contract_background(contract_id: int, file_path: str, db: Session):
     """
     Background task to parse file and run AI analysis.
     """
+    redis_client = get_redis_client()
     try:
-        print(f"Starting analysis for contract {contract_id}...")
+        log.info(f"Starting analysis for contract {contract_id}...")
+        
+        # Update Redis status
+        if redis_client:
+            redis_client.set(f"contract:{contract_id}:progress", 10)
+            redis_client.set(f"contract:{contract_id}:status", "analyzing")
         
         contract = db.query(Contract).filter(Contract.id == contract_id).first()
         if not contract:
-            print(f"Contract {contract_id} not found during background processing")
+            log.info(f"Contract {contract_id} not found during background processing")
             return
 
         contract.status = "analyzing"
         db.commit()
         
+        # Simulate progress update since AI service is blocking/blackbox
+        # In a real scenario, pass a callback to ai_service
+        if redis_client:
+            redis_client.set(f"contract:{contract_id}:progress", 30)
+
         # Now we delegate the entire process (parsing + analysis) to the AI Service Agent
         results = ai_service.process_file(file_path)
+        
+        if redis_client:
+            redis_client.set(f"contract:{contract_id}:progress", 90)
         
         # Calculate risk summary
         risk_summary = {"high": 0, "medium": 0, "low": 0}
@@ -61,14 +81,23 @@ def process_contract_background(contract_id: int, file_path: str, db: Session):
         contract.risk_summary = risk_summary
         contract.status = "analyzed" # or "completed"
         db.commit()
-        print(f"Analysis completed for contract {contract_id}")
+        
+        if redis_client:
+            redis_client.set(f"contract:{contract_id}:progress", 100)
+            redis_client.set(f"contract:{contract_id}:status", "analyzed")
+            # Store results briefly in Redis if needed for fast retrieval, but DB is fine
+            
+        log.info(f"Analysis completed for contract {contract_id}")
         
     except Exception as e:
-        print(f"Error processing contract {contract_id}: {e}")
+        log.info(f"Error processing contract {contract_id}: {e}")
         contract = db.query(Contract).filter(Contract.id == contract_id).first()
         if contract:
             contract.status = "failed"
             db.commit()
+        if redis_client:
+            redis_client.set(f"contract:{contract_id}:status", "failed")
+
 
 @router.get("/", response_model=List[ContractSchema])
 async def get_contracts(
@@ -108,7 +137,7 @@ async def upload_contract(
         name=file.filename,
         file_path=file_location,
         file_size=file_size_str,
-        status="uploading",
+        status="pending", # Changed from uploading to pending
         user_id=current_user.id
     )
     db.add(db_contract)
@@ -126,10 +155,10 @@ async def upload_contract(
         db.add(activity)
         db.commit()
     except Exception as e:
-        print(f"Failed to log activity: {e}")
+        log.info(f"Failed to log activity: {e}")
 
-    # Trigger background analysis
-    background_tasks.add_task(process_contract_background, db_contract.id, file_location, db)
+    # Don't trigger background analysis here!
+    # background_tasks.add_task(process_contract_background, db_contract.id, file_location, db)
     
     return {
         "id": db_contract.id,
@@ -137,6 +166,29 @@ async def upload_contract(
         "size": db_contract.file_size,
         "status": db_contract.status
     }
+
+@router.post("/{contract_id}/analyze")
+async def start_contract_analysis(
+    contract_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Manually trigger contract analysis.
+    """
+    contract = db.query(Contract).filter(Contract.id == contract_id, Contract.user_id == current_user.id).first()
+    
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+        
+    if contract.status in ["analyzing", "analyzed", "completed"]:
+         return {"message": "Analysis already started or completed", "status": contract.status}
+
+    # Trigger background analysis
+    background_tasks.add_task(process_contract_background, contract.id, contract.file_path, db)
+    
+    return {"message": "Analysis started", "status": "analyzing"}
 
 @router.get("/{contract_id}/analysis", response_model=ContractAnalysisResponse)
 async def get_analysis(
@@ -233,7 +285,7 @@ async def delete_contract(
         try:
             os.remove(contract.file_path)
         except Exception as e:
-            print(f"Error deleting file {contract.file_path}: {e}")
+            log.info(f"Error deleting file {contract.file_path}: {e}")
             # Continue to delete DB record even if file deletion fails
             
     db.delete(contract)
@@ -250,6 +302,72 @@ async def delete_contract(
         db.add(activity)
         db.commit()
     except Exception as e:
-        print(f"Failed to log activity: {e}")
+        log.info(f"Failed to log activity: {e}")
     
     return {"message": "Contract deleted successfully"}
+
+@router.get("/{contract_id}/stream")
+async def stream_analysis_progress(
+    contract_id: int,
+    request: Request,
+    token: str,
+    db: Session = Depends(deps.get_db)
+):
+    """
+    Stream analysis progress using SSE.
+    """
+    # Simple auth check using the token from query param
+    # In production, use proper dependency injection for this
+    try:
+        user = deps.get_current_user(db=db, token=token)
+    except Exception:
+        # If auth fails, we return a 401, but for SSE it's tricky. 
+        # We'll just close the connection or yield an error.
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    contract = db.query(Contract).filter(Contract.id == contract_id, Contract.user_id == user.id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    redis_client = get_redis_client()
+    
+    async def event_generator():
+        while True:
+            if await request.is_disconnected():
+                break
+
+            status = "pending"
+            progress = 0
+
+            if redis_client:
+                r_status = redis_client.get(f"contract:{contract_id}:status")
+                r_progress = redis_client.get(f"contract:{contract_id}:progress")
+                
+                if r_status:
+                    status = r_status
+                    progress = int(r_progress) if r_progress else 0
+                else:
+                    # Fallback to DB
+                    db.refresh(contract)
+                    status = contract.status
+                    progress = 100 if status in ["analyzed", "completed"] else 0
+            else:
+                 # Fallback to DB
+                db.refresh(contract)
+                status = contract.status
+                progress = 100 if status in ["analyzed", "completed"] else 0
+            
+            data = json.dumps({
+                "status": status,
+                "progress": progress
+            })
+            
+            yield {"event": "message", "data": data}
+
+            if status in ["analyzed", "completed", "failed"]:
+                break
+            
+            await asyncio.sleep(1)
+
+    return EventSourceResponse(event_generator())
+
