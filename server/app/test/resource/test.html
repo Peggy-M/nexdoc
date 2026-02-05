@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>合同法律风险审查报告</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+
+        @font-face {
+            font-family: "ChineseFont";
+            /* 关键：必须加双引号，且 font_path 必须是系统绝对路径 */
+            src: url("F:/work-space/code/NEXDOC_AI/server/app/assets/fonts/simhei.ttf");
+        }
+
+        /* 强制所有元素使用中文字体，防止部分组件回退到默认字体导致乱码 */
+        html, body, div, p, span, h1, h2, td, th, strong {
+            font-family: "ChineseFont";
+        }
+
+        body {
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .cover {
+            text-align: center;
+            padding-top: 5cm;
+        }
+
+        .cover h1 {
+            font-size: 36pt;
+            color: #1a202c;
+            margin-bottom: 2cm;
+        }
+
+        .cover-info {
+            font-size: 14pt;
+            margin-bottom: 1cm;
+        }
+
+        .cover-info span {
+            color: #718096;
+        }
+
+        h1 {
+            font-size: 24pt;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            color: #2d3748;
+        }
+
+        /* 风险统计卡片布局：xhtml2pdf 必须用 table 才能稳定实现多栏布局 */
+        .summary-table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: separate;
+            border-spacing: 10px;
+        }
+
+        .summary-card {
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #e2e8f0; /* xhtml2pdf 对圆角 border-radius 支持有限，建议先保样式 */
+        }
+
+        .summary-number {
+            font-size: 30pt;
+            font-weight: bold;
+        }
+
+        .summary-label {
+            font-size: 12pt;
+            color: #718096;
+        }
+
+        .high { color: #e53e3e; background-color: #fff5f5; }
+        .medium { color: #dd6b20; background-color: #fffaf0; }
+        .low { color: #38a169; background-color: #f0fff4; }
+
+        .risk-item {
+            margin-bottom: 25px;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            /* 避免风险项在页面底部被截断 */
+            -pdf-keep-with-next: true;
+        }
+
+        .risk-header {
+            border-bottom: 1px solid #edf2f7;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+
+        .risk-tag {
+            padding: 2px 8px;
+            font-size: 10pt;
+            font-weight: bold;
+            color: #ffffff;
+            margin-right: 10px;
+        }
+
+        .risk-title {
+            font-size: 14pt;
+            font-weight: bold;
+        }
+
+        .section-label {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #718096;
+            margin-top: 10px;
+        }
+
+        .clause-box {
+            background-color: #f7fafc;
+            border-left: 4px solid #cbd5e0;
+            padding: 8px;
+            margin: 5px 0;
+            color: #4a5568;
+        }
+
+        .suggestion-box {
+            background-color: #f0fff4;
+            border: 1px solid #c6f6d5;
+            padding: 10px;
+            color: #2f855a;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="cover">
+        <h1>合同法律风险审查报告</h1>
+        <div class="cover-info"><span>合同名称：</span> 政府采购服务类信息化项目.pdf</div>
+        <div class="cover-info"><span>审查日期：</span> 2026-02-05</div>
+        <div class="cover-info"><span>审查工具：</span> LexGuard AI 系统</div>
+    </div>
+
+    <!-- 强制分页 -->
+    <pdf:nextpage />
+
+    <h1>一、风险概览</h1>
+    <p>本次审查共发现 <strong>10</strong> 处法律风险点。</p>
+
+    <table class="summary-table">
+        <tr>
+            <td class="summary-card high">
+                <div class="summary-number">5</div>
+                <div class="summary-label">高风险</div>
+            </td>
+            <td class="summary-card medium">
+                <div class="summary-number">4</div>
+                <div class="summary-label">中风险</div>
+            </td>
+            <td class="summary-card low">
+                <div class="summary-number">1</div>
+                <div class="summary-label">低风险</div>
+            </td>
+        </tr>
+    </table>
+
+    <h1>二、详细审查意见</h1>
+
+
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag high"
+                  style="background-color: #e53e3e;">
+                高风险
+            </span>
+            <span class="risk-title">付款时间约定对供应商不利</span>
+        </div>
+
+        <div class="section-label">相关条款</div>
+        <div class="clause-box italic">"五、付款方式 ... 4. 本合同的付款时间为甲方向政府财政支付部门提出支付申请的时间（不含政府财政支付部门审查及支付的时间），如因政府财政支付管理流程导致的支付延期，甲方不承担逾期付款责任..."</div>
+
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">合同第五条第4款将“向政府财政支付部门提出支付申请的时间”定义为付款时间，而非实际到账时间。这意味着如果因财政审批流程导致资金延迟到账，甲方不承担逾期付款责任，乙方无法主张违约金，这对乙方的现金流管理构成极大风险。</div>
+
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议修改为“甲方应在收到乙方发票后X个工作日内向财政部门提交支付申请，并在财政资金到账后X个工作日内支付给乙方”，或者设定一个财政支付的最长宽限期，逾期则需承担违约责任。
+        </div>
+    </div>
+
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag high"
+                  style="background-color: #e53e3e;">
+                高风险
+            </span>
+            <span class="risk-title">违约责任条款显失公平且存在双重赔偿风险</span>
+        </div>
+
+        <div class="section-label">相关条款</div>
+        <div class="clause-box italic">"九、违约责任与赔偿损失 ... 2. ...从逾期之日起每日按本合同总价 5‰的数额向甲方支付违约金... 10. 甲方逾期付款，每日按应付未付款的万分之一向乙方偿付违约金... 乙方需支付本合同总额 1%违约金，并赔偿甲方遭受的损失... 由此造成的甲方全部损失由乙方承担。"</div>
+
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">合同第九条违约责任条款存在多重不公平之处：一是双方违约金比例严重不对等，乙方逾期服务违约金为每日5‰，而甲方逾期付款仅为每日万分之一，相差50倍；二是存在双重赔偿风险，多处条款约定乙方需支付违约金并赔偿甲方全部损失，违反了违约金的补偿性原则，加重了乙方责任。</div>
+
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议调整违约金比例至合理对等范围（如均为日万分之五）；同时修改赔偿条款为“支付违约金，如违约金不足以弥补甲方实际损失的，乙方应补足差额”，避免双重承担。
+        </div>
+    </div>
+
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag high"
+                  style="background-color: #e53e3e;">
+                高风险
+            </span>
+            <span class="risk-title">系统故障违约金过高且触发条件严苛</span>
+        </div>
+
+        <div class="section-label">相关条款</div>
+        <div class="clause-box italic">"九、违约责任与赔偿损失 ... 3. ...由于乙方原因导致故障不能及时解决...引发本项目涉及应用系统出现故障...导致全省范围内业务中断，持续时间超过 4 小时，乙方须按照合同总价款的 10%向甲方支付违约金..."</div>
+
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">第九条第3款规定，因乙方原因导致全省业务中断超过4小时，需支付合同总价10%的违约金（约14万元）。且若24小时内未解决或一个月内发生2次，甲方有权解除合同并不予支付尾款。对于运维服务而言，故障原因复杂（可能涉及网络、电力等非乙方因素），该条款未区分故障责任归属，违约责任过重。</div>
+
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议明确“因乙方原因”的具体界定，排除不可抗力及第三方因素。同时设定违约金上限或分级处罚机制，避免因单次故障导致巨额赔偿及合同解除。
+        </div>
+    </div>
+
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag high"
+                  style="background-color: #e53e3e;">
+                高风险
+            </span>
+            <span class="risk-title">违约责任缺乏总额上限</span>
+        </div>
+
+        <div class="section-label">相关条款</div>
+        <div class="clause-box italic">"乙方按合同总价 10%的数额向甲方支付违约金...乙方须一次性支付本合同总额 30%的违约金...甲方可每次以不超过合同总价 5%的幅度扣减违约金..."</div>
+
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">合同中约定了多种违约情形及高额违约金（如合同总额的10%、30%、每次5%等），且这些违约责任可能叠加适用。条款未约定违约金总额的上限（如不超过合同总额），导致在发生多项违约或连续违约时，乙方可能面临远超合同标的额的巨额赔偿，甚至导致项目亏损。</div>
+
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议增加违约责任总额上限条款，规定乙方因违约需支付的违约金总额累计不超过合同总价的特定比例（如30%或50%）。同时，明确不同违约情形下的责任适用规则，避免重复计算。
+        </div>
+    </div>
+
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag high"
+                  style="background-color: #e53e3e;">
+                高风险
+            </span>
+            <span class="risk-title">安全违规解除条件过于严苛</span>
+        </div>
+
+        <div class="section-label">相关条款</div>
+        <div class="clause-box italic">"若乙方累计违反 2 次后，甲方有权单方解除合同，乙方须一次性支付本合同总额 30%的违约金"</div>
+
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">条款规定“累计违反 2 次”后甲方即可解除合同并要求支付30%违约金，但未对“违反”的程度进行界定（如轻微违规与重大事故同等对待）。这可能导致乙方因极轻微的程序性违规（如未及时更新文档）累计两次即面临合同解除和巨额罚款。</div>
+
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议将触发解除合同的条件限定为“严重违反”或“造成实质性损失的违反”，或者规定只有达到一定严重程度的违规行为才计入累计次数。
+        </div>
+    </div>
+
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag medium"
+                  style="background-color: #dd6b20;">
+                中风险
+            </span>
+            <span class="risk-title">人员更换限制过于僵化</span>
+        </div>
+
+        <div class="section-label">相关条款</div>
+        <div class="clause-box italic">"九、违约责任与赔偿损失 ... 6. 乙方首次进场的服务人员在进场后 30 天内不得更换。乙方首次进场的服务人员在 30 天内出现人员更换情况的，甲方有权要求乙方每更换 1 个人员支付本合同总价 5%的违约金..."</div>
+
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">第九条第6款规定“首次进场的服务人员在进场后30天内不得更换”，否则每人次支付5%违约金。该条款未考虑人员突发疾病、离职等不可控因素，且违约金比例极高（每人次约7万元），缺乏灵活性。</div>
+
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议增加除外条款，如“因人员健康原因、离职等不可抗力或经甲方认可的特殊情况除外”，并降低违约金比例或设定整改期。
+        </div>
+    </div>
+
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag medium"
+                  style="background-color: #dd6b20;">
+                中风险
+            </span>
+            <span class="risk-title">甲方单方直接扣款权</span>
+        </div>
+
+        <div class="section-label">相关条款</div>
+        <div class="clause-box italic">"乙方因违反本合同约定所需承担的违约金、赔偿金等，甲方有权直接于应付款中予以扣除"</div>
+
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">条款规定甲方有权直接从应付款中扣除违约金和赔偿金。这赋予了甲方单方认定违约和执行处罚的权利，缺乏乙方的异议和确认环节，可能导致甲方在双方存在争议时擅自扣款，影响乙方现金流。</div>
+
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议增加限制条件，如“甲方在发出书面通知并经乙方确认后”方可扣款，或者约定在双方对违约金额存在争议时，暂停扣款，待争议解决后再处理。
+        </div>
+    </div>
+
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag medium"
+                  style="background-color: #dd6b20;">
+                中风险
+            </span>
+            <span class="risk-title">知识产权归属表述存在歧义</span>
+        </div>
+
+        <div class="section-label">相关条款</div>
+        <div class="clause-box italic">"六、知识产权归属 ... 3. 乙方为执行本合同而提供的第三方技术资料、软件、工具及乙方已有知识产权产品的使用权归甲方所有。"</div>
+
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">第六条第3款规定“乙方为执行本合同而提供的...乙方已有知识产权产品的使用权归甲方所有”。该表述在法律上较为模糊，通常乙方仅提供许可而非转移“使用权”的所有权，且未明确许可的范围（如是否可分许可、期限等）。</div>
+
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议修改为“甲方享有乙方已有知识产权产品在本项目范围内的非独占性、不可转让的使用许可”，明确界定权利边界，避免侵犯乙方原有知识产权。
+        </div>
+    </div>
+
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag medium"
+                  style="background-color: #dd6b20;">
+                中风险
+            </span>
+            <span class="risk-title">管辖法院对乙方不利</span>
+        </div>
+
+        <div class="section-label">相关条款</div>
+        <div class="clause-box italic">"任何一方可以向甲方所在地有管辖权的人民法院提出诉讼。"</div>
+
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">争议解决条款约定由甲方所在地法院管辖。对于作为服务提供方的乙方而言，异地诉讼将增加差旅费、时间成本，且可能面临地方保护主义风险。</div>
+
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议争取改为原告所在地法院管辖，或选择第三方仲裁机构进行仲裁，以平衡诉讼成本和风险。
+        </div>
+    </div>
+
+    <div class="risk-item">
+        <div class="risk-header">
+            <span class="risk-tag low"
+                  style="background-color: #38a169;">
+                低风险
+            </span>
+            <span class="risk-title">服务范围调整标准主观</span>
+        </div>
+
+        <div class="section-label">相关条款</div>
+        <div class="clause-box italic">"八、验收标准 ... 1. 完成本合同所列的保修服务内容（服务内容见附件 1。甲方可根据需要调整服务 内容，但工作量相当）；"</div>
+
+        <div class="section-label">风险分析</div>
+        <div class="analysis-text">第八条第1款规定“甲方可根据需要调整服务内容，但工作量相当”。“工作量相当”缺乏客观量化标准，容易导致甲方随意增加工作量，引发合同争议。</div>
+
+        <div class="suggestion-box">
+            <strong>建议：</strong> 建议明确“工作量相当”的认定标准，或约定如调整导致工作量增加，应签订补充协议并相应增加费用。
+        </div>
+    </div>
+
+</body>
+</html>
