@@ -45,8 +45,8 @@ def process_contract_background(contract_id: int, file_path: str, db: Session):
         
         # Update Redis status
         if redis_client:
-            redis_client.set(f"contract:{contract_id}:progress", 10)
-            redis_client.set(f"contract:{contract_id}:status", "analyzing")
+            redis_client.set(f"contract:{contract_id}:progress", 10, ex=3600) # Expire in 1 hour
+            redis_client.set(f"contract:{contract_id}:status", "analyzing", ex=3600)
         
         contract = db.query(Contract).filter(Contract.id == contract_id).first()
         if not contract:
@@ -59,13 +59,31 @@ def process_contract_background(contract_id: int, file_path: str, db: Session):
         # Simulate progress update since AI service is blocking/blackbox
         # In a real scenario, pass a callback to ai_service
         if redis_client:
-            redis_client.set(f"contract:{contract_id}:progress", 30)
+            redis_client.set(f"contract:{contract_id}:progress", 30, ex=3600)
 
         # Now we delegate the entire process (parsing + analysis) to the AI Service Agent
-        results = ai_service.process_file(file_path)
+        
+        # Define progress callback
+        def update_progress(progress_val: int):
+            if redis_client:
+                redis_client.set(f"contract:{contract_id}:progress", progress_val, ex=3600)
+                
+        # Define cancel check callback
+        def check_cancel():
+            if redis_client:
+                status = redis_client.get(f"contract:{contract_id}:status")
+                if status and (status == b'canceling' or status == 'canceling'):
+                    return True
+            return False
+
+        # ai_service.process_file now returns a dict { "risks": [...], "type": "..." }
+        analysis_output = ai_service.process_file(file_path, progress_callback=update_progress, cancel_check=check_cancel)
+        
+        results = analysis_output.get("risks", [])
+        contract_type = analysis_output.get("type", "通用合同")
         
         if redis_client:
-            redis_client.set(f"contract:{contract_id}:progress", 90)
+            redis_client.set(f"contract:{contract_id}:progress", 90, ex=3600)
         
         # Calculate risk summary
         risk_summary = {"high": 0, "medium": 0, "low": 0}
@@ -78,17 +96,27 @@ def process_contract_background(contract_id: int, file_path: str, db: Session):
 
         # Save Results
         contract.analysis_results = results
+        contract.contract_type = contract_type
         contract.risk_summary = risk_summary
         contract.status = "analyzed" # or "completed"
         db.commit()
         
         if redis_client:
-            redis_client.set(f"contract:{contract_id}:progress", 100)
-            redis_client.set(f"contract:{contract_id}:status", "analyzed")
+            redis_client.set(f"contract:{contract_id}:progress", 100, ex=3600)
+            redis_client.set(f"contract:{contract_id}:status", "analyzed", ex=3600)
             # Store results briefly in Redis if needed for fast retrieval, but DB is fine
             
         log.info(f"Analysis completed for contract {contract_id}")
         
+    except InterruptedError:
+        log.info(f"Analysis cancelled for contract {contract_id}")
+        contract = db.query(Contract).filter(Contract.id == contract_id).first()
+        if contract:
+            contract.status = "cancelled"
+            db.commit()
+        if redis_client:
+            redis_client.set(f"contract:{contract_id}:status", "cancelled", ex=3600)
+            
     except Exception as e:
         log.info(f"Error processing contract {contract_id}: {e}")
         contract = db.query(Contract).filter(Contract.id == contract_id).first()
@@ -96,7 +124,7 @@ def process_contract_background(contract_id: int, file_path: str, db: Session):
             contract.status = "failed"
             db.commit()
         if redis_client:
-            redis_client.set(f"contract:{contract_id}:status", "failed")
+            redis_client.set(f"contract:{contract_id}:status", "failed", ex=3600)
 
 
 @router.get("/", response_model=List[ContractSchema])
@@ -344,7 +372,7 @@ async def stream_analysis_progress(
                 r_progress = redis_client.get(f"contract:{contract_id}:progress")
                 
                 if r_status:
-                    status = r_status
+                    status = r_status.decode('utf-8') if isinstance(r_status, bytes) else r_status
                     progress = int(r_progress) if r_progress else 0
                 else:
                     # Fallback to DB
@@ -357,19 +385,51 @@ async def stream_analysis_progress(
                 status = contract.status
                 progress = 100 if status in ["analyzed", "completed"] else 0
             
+            # Determine stage based on progress
+            stage = "准备中..."
+            if status == "cancelled":
+                stage = "已取消"
+            elif progress < 30:
+                stage = "解析文档结构..."
+            elif progress < 80:
+                stage = "识别风险条款..."
+            else:
+                stage = "生成审查报告..."
+
             data = json.dumps({
                 "status": status,
-                "progress": progress
+                "progress": progress,
+                "stage": stage
             })
             
             yield {"event": "message", "data": data}
 
-            if status in ["analyzed", "completed", "failed"]:
+            if status in ["analyzed", "completed", "failed", "cancelled"]:
                 break
             
             await asyncio.sleep(1)
 
     return EventSourceResponse(event_generator())
+
+@router.post("/{contract_id}/cancel")
+async def cancel_contract_analysis(
+    contract_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Cancel a running analysis.
+    """
+    contract = db.query(Contract).filter(Contract.id == contract_id, Contract.user_id == current_user.id).first()
+    
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    redis_client = get_redis_client()
+    if redis_client:
+        redis_client.set(f"contract:{contract_id}:status", "canceling", ex=3600)
+    
+    return {"message": "Cancellation requested"}
 
 # --- Sample Contracts Endpoints ---
 

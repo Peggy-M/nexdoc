@@ -116,7 +116,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenTrial, onOpenVideo }) => {
             <div className="inline-flex items-center gap-2 bg-lime/10 border border-lime/20 rounded-full px-4 py-2 w-fit">
               <Shield className="w-4 h-4 text-lime" />
               <span className="text-sm font-medium text-charcoal">
-                DeepSeek-R1 推理引擎驱动
+                多模型混合推理引擎驱动
               </span>
             </div>
 

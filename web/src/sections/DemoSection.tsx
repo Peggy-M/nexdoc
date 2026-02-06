@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   Upload, 
   FileText, 
@@ -27,10 +27,53 @@ export const DemoSection: React.FC = () => {
   const [step, setStep] = useState<'upload' | 'analyzing' | 'results'>('upload');
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
   const [uploadedFileId, setUploadedFileId] = useState<number | null>(null);
-  const [risks, setRisks] = useState<RiskItem[]>([]);
-  const [selectedRisk, setSelectedRisk] = useState<RiskItem | null>(null);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [currentStage, setCurrentStage] = useState<string>("准备中...");
+  const [risks, setRisks] = useState<any[]>([]);
+  const [selectedRisk, setSelectedRisk] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Restore task from localStorage on mount
+  useEffect(() => {
+    const restoreTask = async () => {
+        const savedId = localStorage.getItem('nexdoc_demo_id');
+        const savedFileName = localStorage.getItem('nexdoc_demo_filename');
+        
+        if (savedId && savedFileName) {
+            try {
+                const id = parseInt(savedId);
+                const response = await fetch(`/api/v1/demo/${id}/analysis`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setUploadedFile(savedFileName);
+                    setUploadedFileId(id);
+                    
+                    if (data.status === 'analyzing' || data.status === 'pending') {
+                        setStep('analyzing');
+                        // Reconnect SSE
+                        startAnalysis(id);
+                    } else if (data.status === 'analyzed' || data.status === 'completed') {
+                        setRisks(data.results || []);
+                        if (data.results && data.results.length > 0) {
+                            setSelectedRisk(data.results[0]);
+                        }
+                        setStep('results');
+                        setAnalysisProgress(100);
+                    } else {
+                        // Failed or unknown, clear storage
+                        localStorage.removeItem('nexdoc_demo_id');
+                        localStorage.removeItem('nexdoc_demo_filename');
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to restore task:", e);
+                // Don't clear storage immediately on network error, but maybe reset if persistent
+            }
+        }
+    };
+    
+    restoreTask();
+  }, []);
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -72,6 +115,10 @@ export const DemoSection: React.FC = () => {
           const data = await response.json();
           setUploadedFileId(data.id);
           
+          // Save to localStorage for restoration
+          localStorage.setItem('nexdoc_demo_id', data.id.toString());
+          localStorage.setItem('nexdoc_demo_filename', file.name);
+          
           // 上传完成后开始分析
           startAnalysis(data.id);
 
@@ -83,45 +130,79 @@ export const DemoSection: React.FC = () => {
   };
 
   const startAnalysis = async (id: number) => {
-    setAnalysisProgress(0);
-    let currentProgress = 0;
+    // Only reset progress if we are starting fresh (optional logic, but keep simple for now)
+    // setAnalysisProgress(0); 
     
-    // Polling function
-    const poll = async () => {
-      try {
-        const response = await fetch(`/api/v1/demo/${id}/analysis`);
-        if (!response.ok) throw new Error("Analysis failed");
-        
-        const data = await response.json();
-        
-        if (data.status === 'completed') {
-          setAnalysisProgress(100);
-          setRisks(data.results);
-          if (data.results && data.results.length > 0) {
-            setSelectedRisk(data.results[0]);
-          }
-          setTimeout(() => setStep('results'), 500);
-        } else if (data.status === 'failed') {
-          alert("分析失败，请重试");
-          setStep('upload');
-        } else {
-          // Continue polling
-          // Fake progress increment up to 90%
-          if (currentProgress < 90) {
-            currentProgress += (90 - currentProgress) / 10; // Decelerating progress
-            setAnalysisProgress(Math.floor(currentProgress));
-          }
-          setTimeout(poll, 1000);
+    const eventSource = new EventSource(`/api/v1/demo/${id}/analysis/stream`);
+    
+    eventSource.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            
+            if (data.status === 'analyzed' || data.status === 'completed') {
+                setAnalysisProgress(100);
+                eventSource.close();
+                
+                // Fetch final results
+                fetch(`/api/v1/demo/${id}/analysis`)
+                    .then(res => res.json())
+                    .then(finalData => {
+                        setRisks(finalData.results);
+                        if (finalData.results && finalData.results.length > 0) {
+                            setSelectedRisk(finalData.results[0]);
+                        }
+                        setTimeout(() => setStep('results'), 500);
+                    })
+                    .catch(err => {
+                        console.error("Fetch results error:", err);
+                        alert("获取分析结果失败");
+                    });
+                    
+            } else if (data.status === 'failed') {
+                eventSource.close();
+                alert("分析失败，请重试");
+                setStep('upload');
+                localStorage.removeItem('nexdoc_demo_id');
+                localStorage.removeItem('nexdoc_demo_filename');
+            } else if (data.status === 'cancelled') {
+                eventSource.close();
+                // alert("分析已取消");
+                setStep('upload');
+                localStorage.removeItem('nexdoc_demo_id');
+                localStorage.removeItem('nexdoc_demo_filename');
+            } else {
+                // Update progress
+                if (data.progress !== undefined) {
+                    setAnalysisProgress(data.progress);
+                }
+                if (data.stage) {
+                    setCurrentStage(data.stage);
+                }
+            }
+        } catch (error) {
+            console.error("SSE Parse Error:", error);
         }
-      } catch (error) {
-        console.error("Analysis error:", error);
-        alert("分析出错");
-        setStep('upload');
-      }
     };
 
-    // Start polling
-    poll();
+    eventSource.onerror = (err) => {
+        console.error("SSE Error:", err);
+        eventSource.close();
+        // Optional: Alert user or retry
+    };
+  };
+
+  const handleCancel = async () => {
+    if (!uploadedFileId) return;
+    
+    try {
+        await fetch(`/api/v1/demo/${uploadedFileId}/cancel`, {
+            method: 'POST'
+        });
+        // The SSE listener will pick up the 'cancelled' status and handle UI updates
+    } catch (error) {
+        console.error("Failed to cancel analysis:", error);
+        alert("取消失败");
+    }
   };
 
   const resetDemo = () => {
@@ -131,6 +212,9 @@ export const DemoSection: React.FC = () => {
     setSelectedRisk(null);
     setAnalysisProgress(0);
     setRisks([]);
+    setCurrentStage("准备中...");
+    localStorage.removeItem('nexdoc_demo_id');
+    localStorage.removeItem('nexdoc_demo_filename');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -263,17 +347,25 @@ export const DemoSection: React.FC = () => {
 
                   <h3 className="text-2xl font-bold text-charcoal mb-2">
                     AI 正在分析合同...
+                    <span className="text-base font-normal text-gray-500 ml-3 animate-pulse">
+                      {currentStage}
+                    </span>
                   </h3>
                   <p className="text-gray-500 mb-6">
                     {uploadedFile}
                   </p>
 
                   {/* Progress bar */}
-                  <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-4">
+                  <div className="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-4">
                     <div 
                       className="h-full bg-lime rounded-full transition-all duration-300"
                       style={{ width: `${analysisProgress}%` }}
                     />
+                  </div>
+                  
+                  {/* Percentage Display */}
+                  <div className="text-right text-sm font-semibold text-lime mb-6">
+                    {analysisProgress}%
                   </div>
 
                   <div className="flex items-center justify-center gap-6 text-sm text-gray-400">
@@ -289,6 +381,17 @@ export const DemoSection: React.FC = () => {
                       <CheckCircle className={cn("w-4 h-4", analysisProgress > 70 ? "text-lime" : "text-gray-300")} />
                       <span>生成审查报告</span>
                     </div>
+                  </div>
+                  
+                  {/* Cancel Button */}
+                  <div className="mt-8">
+                    <button 
+                        onClick={handleCancel}
+                        className="text-gray-400 hover:text-red-500 text-sm flex items-center gap-2 mx-auto transition-colors"
+                    >
+                        <AlertTriangle className="w-4 h-4" />
+                        中止分析
+                    </button>
                   </div>
                 </div>
               </div>

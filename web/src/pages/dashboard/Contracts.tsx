@@ -121,32 +121,52 @@ export const Contracts: React.FC = () => {
     const styles: Record<string, string> = {
       analyzed: 'bg-orange-100 text-orange-600',
       pending: 'bg-gray-100 text-gray-600',
+      analyzing: 'bg-blue-100 text-blue-600', // Added style for analyzing
       completed: 'bg-green-100 text-green-600',
     };
     const labels: Record<string, string> = {
       analyzed: '已分析',
       pending: '待分析',
+      analyzing: '分析中', // Added label for analyzing
       completed: '已完成',
     };
     
-    const badge = (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium ${styles[status]}`}>
-        {labels[status]}
+    // Default badge
+    let badge = (
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-600'}`}>
+        {labels[status] || status}
       </span>
     );
 
-    if (status === 'pending') {
+    // Clickable badge for pending or analyzing
+    if (status === 'pending' || status === 'analyzing') {
       return (
         <button 
           onClick={(e) => {
             e.stopPropagation();
-            navigate(`/dashboard/upload?id=${contract.id}&name=${encodeURIComponent(contract.name)}`);
+            // Use state in navigation to pass data
+            navigate(`/dashboard/upload?id=${contract.id}&name=${encodeURIComponent(contract.name)}`, {
+                state: { 
+                    id: contract.id, 
+                    filename: contract.name,
+                    autoStart: status === 'pending' // Only auto start new analysis if pending
+                }
+            });
+            // Also save to local storage to match restore logic
+            localStorage.setItem('nexdoc_demo_id', contract.id.toString());
+            localStorage.setItem('nexdoc_demo_filename', contract.name);
           }}
           className="group relative cursor-pointer"
-          title="点击开始分析"
+          title={status === 'analyzing' ? "点击查看进度" : "点击开始分析"}
         >
-          <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 group-hover:bg-lime group-hover:text-charcoal transition-colors duration-200">
-            {labels[status]}
+          <span className={cn(
+            "px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1",
+            status === 'analyzing' 
+                ? "bg-blue-100 text-blue-600 group-hover:bg-blue-200" 
+                : "bg-gray-100 text-gray-600 group-hover:bg-lime group-hover:text-charcoal"
+          )}>
+            {status === 'analyzing' && <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"/>}
+            {labels[status] || status}
           </span>
         </button>
       );

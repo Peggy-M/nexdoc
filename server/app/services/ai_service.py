@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from typing import List, Dict, Any, TypedDict, Annotated
@@ -14,15 +15,39 @@ from app.utils.log_utils import log
 class AgentState(TypedDict):
     file_path: str
     contract_text: str
+    contract_type: str
     text_chunks: List[str]
     chunk_risks: List[Dict[str, Any]]
     risks: List[Dict[str, Any]]
     error: str
+    progress_callback: Any # Optional[Callable[[int], None]]
+    cancel_check: Any # Optional[Callable[[], bool]]
 
 class AIService:
     def __init__(self):
-        self.llm = LLMFactory.get_llm("zhipu")
+        self.llm = LLMFactory.get_llm("deepseek")
         self.workflow = self._build_graph()
+
+    def _update_progress(self, state: AgentState, progress: int):
+        """Helper to call progress callback if available."""
+        callback = state.get("progress_callback")
+        if callback:
+            try:
+                callback(progress)
+            except Exception as e:
+                log.info(f"Progress callback failed: {e}")
+
+    def _check_cancel(self, state: AgentState):
+        """Helper to check if cancellation is requested."""
+        checker = state.get("cancel_check")
+        if checker:
+            try:
+                if checker():
+                    raise InterruptedError("Analysis cancelled by user")
+            except Exception as e:
+                if isinstance(e, InterruptedError):
+                    raise e
+                log.info(f"Cancel check failed: {e}")
 
     def _build_graph(self):
         """Build the LangGraph workflow."""
@@ -30,6 +55,7 @@ class AIService:
 
         # Define nodes
         workflow.add_node("parse_file", self._parse_file_node)
+        workflow.add_node("identify_type", self._identify_type_node)
         workflow.add_node("split_text", self._split_text_node)
         workflow.add_node("map_risks", self._map_risks_node)
         workflow.add_node("reduce_risks", self._reduce_risks_node)
@@ -37,7 +63,8 @@ class AIService:
 
         # Define edges
         workflow.set_entry_point("parse_file")
-        workflow.add_edge("parse_file", "split_text")
+        workflow.add_edge("parse_file", "identify_type")
+        workflow.add_edge("identify_type", "split_text")
         workflow.add_edge("split_text", "map_risks")
         workflow.add_edge("map_risks", "reduce_risks")
         workflow.add_edge("reduce_risks", "validate_format")
@@ -48,19 +75,67 @@ class AIService:
     def _parse_file_node(self, state: AgentState):
         """Node: Parse file content using FileParser."""
         log.info("--- Node: Parsing File ---")
+        self._check_cancel(state)
+        self._update_progress(state, 10)
         file_path = state["file_path"]
         
         try:
             text = FileParser.extract_text(file_path)
             if not text:
                 return {"error": f"Failed to extract text from {file_path}", "contract_text": ""}
+            self._update_progress(state, 20)
             return {"contract_text": text}
+        except InterruptedError as e:
+            raise e
         except Exception as e:
             return {"error": str(e), "contract_text": ""}
+
+    def _identify_type_node(self, state: AgentState):
+        """Node: Identify contract type from the beginning of the text."""
+        log.info("--- Node: Identifying Contract Type ---")
+        self._check_cancel(state)
+        
+        if state.get("error"):
+            return {"contract_type": "未知类型"}
+            
+        text = state["contract_text"]
+        # Use first 3000 chars for identification
+        sample_text = text[:3000]
+        
+        prompt = f"""
+        请根据以下合同文本的前半部分，判断该合同的类型。
+        
+        文本片段：
+        {sample_text}
+        
+        请只输出合同类型的名称，例如："劳动合同"、"房屋租赁合同"、"软件开发合同"、"采购合同"、"保密协议" 等。
+        如果无法判断，请输出 "通用合同"。
+        不要输出任何其他解释性文字。
+        """
+        
+        try:
+            response = self.llm.invoke([
+                SystemMessage(content="You are a helpful legal assistant."),
+                HumanMessage(content=prompt)
+            ])
+            
+            contract_type = response.content.strip().replace('"', '').replace("'", "")
+            # Basic cleanup
+            if len(contract_type) > 20 or "\n" in contract_type:
+                contract_type = "通用合同"
+                
+            log.info(f"Identified contract type: {contract_type}")
+            return {"contract_type": contract_type}
+            
+        except Exception as e:
+            log.info(f"Error identifying contract type: {e}")
+            return {"contract_type": "未知类型"}
 
     def _split_text_node(self, state: AgentState):
         """Node: Split text into chunks."""
         log.info("--- Node: Splitting Text ---")
+        self._check_cancel(state)
+        self._update_progress(state, 25)
         if state.get("error"):
             return {"text_chunks": []}
             
@@ -76,11 +151,14 @@ class AIService:
         )
         chunks = splitter.split_text(text)
         log.info(f"Split text into {len(chunks)} chunks.")
+        self._update_progress(state, 30)
         return {"text_chunks": chunks}
 
     async def _map_risks_node(self, state: AgentState):
         """Node: Analyze each chunk in parallel."""
         log.info("--- Node: Mapping Risks (Parallel Analysis - Async) ---")
+        self._check_cancel(state)
+        self._update_progress(state, 35)
         if state.get("error"):
             return {"chunk_risks": []}
             
@@ -114,10 +192,21 @@ class AIService:
             ])
 
         try:
+            self._check_cancel(state)
+            
             # Execute in parallel using asyncio.gather
             # This allows for higher concurrency than the default batch thread pool
             tasks = [self.llm.ainvoke(p) for p in prompts]
+            
+            # TODO: Improve progress tracking for individual chunks if needed
+            self._update_progress(state, 40)
+            
+            # We can't easily check cancel during gather, but we can check before
+            
             responses = await asyncio.gather(*tasks)
+            
+            self._check_cancel(state)
+            self._update_progress(state, 75)
             
             all_chunk_risks = []
             for response in responses:
@@ -136,7 +225,9 @@ class AIService:
                     continue
             
             return {"chunk_risks": all_chunk_risks}
-            
+        
+        except InterruptedError as e:
+            raise e
         except Exception as e:
             log.info(f"Error in map_risks: {e}")
             return {"error": str(e), "chunk_risks": []}
@@ -144,6 +235,8 @@ class AIService:
     def _reduce_risks_node(self, state: AgentState):
         """Node: Aggregate and deduplicate risks."""
         log.info("--- Node: Reducing Risks (Aggregation) ---")
+        self._check_cancel(state)
+        self._update_progress(state, 80)
         if state.get("error"):
             return {"risks": []}
             
@@ -176,10 +269,14 @@ class AIService:
         """
         
         try:
+            self._check_cancel(state)
+            
             response = self.llm.invoke([
                 SystemMessage(content="You are a helpful legal assistant that outputs raw JSON."),
                 HumanMessage(content=prompt)
             ])
+            
+            self._update_progress(state, 95)
             
             content = response.content
             if content.startswith("```json"):
@@ -235,21 +332,24 @@ class AIService:
             
         return {"risks": validated_risks}
 
-    def process_file(self, file_path: str) -> List[Dict[str, Any]]:
+    def process_file(self, file_path: str, progress_callback=None, cancel_check=None) -> Dict[str, Any]:
         """
         Public entry point to run the graph starting from a file path.
         """
         if not self.llm:
             log.info("Warning: No API Key provided. Returning mock data.")
-            return self._get_mock_results()
+            return {"risks": self._get_mock_results(), "type": "演示合同"}
 
         initial_state = {
             "file_path": file_path, 
-            "contract_text": "", 
+            "contract_text": "",
+            "contract_type": "",
             "text_chunks": [],
             "chunk_risks": [],
             "risks": [], 
-            "error": ""
+            "error": "",
+            "progress_callback": progress_callback,
+            "cancel_check": cancel_check
         }
         
         try:
@@ -266,15 +366,19 @@ class AIService:
             
             if final_state.get("error"):
                 log.info(f"Workflow Error: {final_state['error']}")
-                # In a real app, we might want to return the error to the user
-                # For now, returning empty list or mock data
-                return [] 
+                return {"risks": [], "type": "未知类型"}
                 
-            return final_state["risks"]
+            return {
+                "risks": final_state["risks"],
+                "type": final_state.get("contract_type", "通用合同")
+            }
             
+        except InterruptedError as e:
+            log.info(f"Analysis cancelled: {e}")
+            raise e
         except Exception as e:
             log.info(f"Graph execution failed: {e}")
-            return self._get_mock_results()
+            return {"risks": self._get_mock_results(), "type": "错误"}
 
     def _get_mock_results(self):
         return [

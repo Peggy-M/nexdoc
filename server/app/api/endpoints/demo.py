@@ -2,10 +2,12 @@ import os
 import shutil
 import time
 import asyncio
+import json
 from typing import List
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends, Request
 from sqlalchemy.orm import Session
+from sse_starlette.sse import EventSourceResponse
 
 from app.api import deps
 from app.models.contract import Contract
@@ -144,3 +146,104 @@ async def get_demo_analysis(
         "status": contract.status,
         "results": contract.analysis_results or []
     }
+
+@router.get("/{contract_id}/analysis/stream")
+async def stream_demo_analysis(
+    contract_id: int,
+    request: Request,
+    db: Session = Depends(deps.get_db)
+):
+    """
+    Stream analysis progress for demo contract using SSE.
+    """
+    contract = db.query(Contract).filter(Contract.id == contract_id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+        
+    # Demo contracts must have user_id=None
+    if contract.user_id is not None:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    async def event_generator():
+        redis_client = get_redis_client()
+        
+        while True:
+            if await request.is_disconnected():
+                break
+
+            # Try to get status from Redis first
+            status = None
+            progress = 0
+            
+            if redis_client:
+                status_bytes = redis_client.get(f"contract:{contract_id}:status")
+                progress_val = redis_client.get(f"contract:{contract_id}:progress")
+                
+                if status_bytes:
+                    status = status_bytes.decode('utf-8') if isinstance(status_bytes, bytes) else status_bytes
+                
+                if progress_val:
+                    progress = int(progress_val)
+            
+            # Fallback to DB if Redis is empty
+            if not status:
+                db.refresh(contract)
+                status = contract.status
+                # Estimate progress based on status if not in Redis
+                if status in ["completed", "analyzed"]:
+                    progress = 100
+                elif status == "analyzing":
+                    progress = 50 
+                elif status == "failed":
+                    progress = 0
+                elif status == "cancelled":
+                    progress = 0
+            
+            # Determine stage based on progress
+            stage = "准备中..."
+            if status == "cancelled":
+                stage = "已取消"
+            elif progress < 30:
+                stage = "解析文档结构..."
+            elif progress < 80:
+                stage = "识别风险条款..."
+            else:
+                stage = "生成审查报告..."
+
+            data = {
+                "status": status,
+                "progress": progress,
+                "stage": stage
+            }
+            
+            yield {
+                "data": json.dumps(data)
+            }
+
+            if status in ["analyzed", "completed", "failed", "cancelled"]:
+                break
+                
+            await asyncio.sleep(1)
+
+    return EventSourceResponse(event_generator())
+
+@router.post("/{contract_id}/cancel")
+async def cancel_demo_analysis(
+    contract_id: int,
+    db: Session = Depends(deps.get_db)
+):
+    """
+    Cancel a running analysis for demo contract.
+    """
+    contract = db.query(Contract).filter(Contract.id == contract_id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+        
+    if contract.user_id is not None:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    redis_client = get_redis_client()
+    if redis_client:
+        redis_client.set(f"contract:{contract_id}:status", "canceling", ex=3600)
+    
+    return {"message": "Cancellation requested"}

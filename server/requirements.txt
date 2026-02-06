@@ -4,12 +4,14 @@ pydantic==2.12.5
 python-multipart==0.0.9
 python-dotenv==1.0.1
 httpx==0.28.1
-langgraph==1.0.5
-langchain-openai==1.1.6
-langchain-community==0.4.1
-langchain-core==1.2.6
-unstructured[pdf]==0.18.31
-playwright==1.41.1
+langgraph>=0.0.10
+langchain-openai>=0.1.0
+langchain-community>=0.0.10
+langchain-core>=0.1.10
+unstructured>=0.11.0
+pypdf>=3.0.0
+pdf2image
+playwright>=1.41.1
 pymysql==1.1.2
 passlib==1.7.4
 bcrypt==3.2.0
@@ -19,6 +21,6 @@ tiktoken==0.12.0
 email-validator==2.3.0
 redis==5.0.1
 sse-starlette==2.0.0
-fastapi
-
+gunicorn
+loguru
 # pip install playwright; python -m playwright install chromium

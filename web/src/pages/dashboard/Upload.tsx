@@ -71,6 +71,7 @@ export const UploadPage: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [analysisStep, setAnalysisStep] = useState<'upload' | 'analyzing' | 'results'>('upload');
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [currentStage, setCurrentStage] = useState<string>("准备中...");
   const [selectedRisk, setSelectedRisk] = useState<AnalysisResult | null>(null);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +81,13 @@ export const UploadPage: React.FC = () => {
     const contractId = searchParams.get('id');
     const contractName = searchParams.get('name');
     
+    // Check if autoStart is requested via navigation state
+    // We can't access location.state here directly without useLocation, 
+    // but the logic below covers resuming or starting if status is right.
+    // However, if we came from "Start Analysis" button in Contracts, 
+    // we want to trigger analysis if it hasn't started. 
+    // For now, let's rely on backend status check.
+
     if (contractId) {
       const id = parseInt(contractId);
       // Simulate adding the file to the list as "completed" (ready for analysis)
@@ -110,6 +118,15 @@ export const UploadPage: React.FC = () => {
             } else if (data.status === 'analyzing') {
                 setAnalysisStep('analyzing');
                 connectSSE(id);
+            } else if (data.status === 'pending') {
+                // If pending, we might want to auto-start if user clicked "Start Analysis"
+                // For simplicity, let's auto-start if we are on this page with an ID
+                // Or maybe just show the file and let user click "Start Analysis"?
+                // Let's check local storage to see if we should auto-resume/start
+                const savedId = localStorage.getItem('nexdoc_demo_id');
+                if (savedId === contractId) {
+                    startAnalysis();
+                }
             }
           }
         } catch (error) {
@@ -129,7 +146,12 @@ export const UploadPage: React.FC = () => {
         try {
             const data = JSON.parse(event.data);
             if (data.status === 'analyzing') {
-                setAnalysisProgress(data.progress);
+                if (data.progress !== undefined) {
+                    setAnalysisProgress(data.progress);
+                }
+                if (data.stage) {
+                    setCurrentStage(data.stage);
+                }
             } else if (data.status === 'analyzed' || data.status === 'completed') {
                 eventSource.close();
                 setAnalysisProgress(100);
@@ -151,6 +173,11 @@ export const UploadPage: React.FC = () => {
                 eventSource.close();
                 alert("分析失败");
                 setAnalysisStep('upload');
+            } else if (data.status === 'cancelled') {
+                eventSource.close();
+                setAnalysisStep('upload');
+                localStorage.removeItem('nexdoc_demo_id');
+                localStorage.removeItem('nexdoc_demo_filename');
             }
         } catch (e) {
             console.error("SSE Parse Error", e);
@@ -161,12 +188,28 @@ export const UploadPage: React.FC = () => {
         console.error("SSE Error:", err);
         eventSource.close();
     };
-
-    // Cleanup on unmount or when component changes? 
-    // Ideally we should track this ref and close it.
-    // For now, let's just let it close on error/completion.
   };
 
+
+  const handleCancel = async () => {
+    // 假设我们只分析列表中的第一个已完成的文件（演示用）
+    const targetFile = files.find(f => f.status === 'completed');
+    if (!targetFile) return;
+
+    try {
+        const token = localStorage.getItem('NexDoc_token');
+        await fetch(`/api/v1/contracts/${targetFile.id}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        // The SSE listener will pick up the 'cancelled' status and handle UI updates
+    } catch (error) {
+        console.error("Failed to cancel analysis:", error);
+        alert("取消失败");
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -452,36 +495,55 @@ export const UploadPage: React.FC = () => {
             </div>
           </div>
 
-          <h2 className="text-2xl font-bold text-charcoal mb-2">
+          <h3 className="text-2xl font-bold text-charcoal mb-2">
             AI 正在分析合同...
-          </h2>
-          <p className="text-gray-500 mb-8">
-            正在识别风险条款、检查合规性、生成审查报告
+            <span className="text-base font-normal text-gray-500 ml-3 animate-pulse">
+              {currentStage}
+            </span>
+          </h3>
+          <p className="text-gray-500 mb-6">
+            {files.length > 0 ? files[0].name : '正在上传...'}
           </p>
 
-          <div className="max-w-md mx-auto">
-            <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-4">
-              <div 
-                className="h-full bg-lime rounded-full transition-all duration-300"
-                style={{ width: `${analysisProgress}%` }}
-              />
+          {/* Progress bar Container */}
+           <div className="max-w-md mx-auto">
+             <div className="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-4">
+               <div 
+                 className="h-full bg-lime rounded-full transition-all duration-300"
+                 style={{ width: `${analysisProgress}%` }}
+               />
+             </div>
+             
+             {/* Percentage Display */}
+             <div className="text-right text-sm font-semibold text-lime mb-6">
+               {analysisProgress}%
+             </div>
+           </div>
+
+          <div className="flex items-center justify-center gap-6 text-sm text-gray-400">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-lime" />
+              <span>解析文档结构</span>
             </div>
-            <p className="text-sm text-gray-400">{analysisProgress}%</p>
+            <div className="flex items-center gap-2">
+              <CheckCircle className={cn("w-4 h-4", analysisProgress > 30 ? "text-lime" : "text-gray-300")} />
+              <span>识别风险条款</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className={cn("w-4 h-4", analysisProgress > 70 ? "text-lime" : "text-gray-300")} />
+              <span>生成修改建议</span>
+            </div>
           </div>
 
-          <div className="flex items-center justify-center gap-8 mt-8">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <CheckCircle className="w-4 h-4 text-lime" />
-              解析文档结构
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <CheckCircle className={`w-4 h-4 ${analysisProgress > 30 ? 'text-lime' : 'text-gray-300'}`} />
-              识别风险条款
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <CheckCircle className={`w-4 h-4 ${analysisProgress > 60 ? 'text-lime' : 'text-gray-300'}`} />
-              生成修改建议
-            </div>
+          {/* Cancel Button */}
+          <div className="mt-8">
+            <button 
+                onClick={handleCancel}
+                className="text-gray-400 hover:text-red-500 text-sm flex items-center gap-2 mx-auto transition-colors"
+            >
+                <AlertTriangle className="w-4 h-4" />
+                中止分析
+            </button>
           </div>
         </div>
       )}

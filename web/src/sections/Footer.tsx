@@ -54,7 +54,7 @@ export const Footer: React.FC = () => {
               <span className="text-xl font-bold">NexDoc AI</span>
             </div>
             <p className="text-gray-400 text-sm mb-6 max-w-xs">
-              基于 DeepSeek-R1 推理引擎的新一代智能合同防御系统，为您的法律工作流提供精准防护。
+              基于多模型混合推理引擎驱动推理引擎的新一代智能合同防御系统，为您的法律工作流提供精准防护。
             </p>
             <div className="space-y-2 text-sm text-gray-400">
               <div className="flex items-center gap-2">

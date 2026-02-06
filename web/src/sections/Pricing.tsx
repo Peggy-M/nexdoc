@@ -16,8 +16,8 @@ const plans = [
   {
     name: '基础版',
     description: '适合个人律师和小型团队',
-    monthlyPrice: 299,
-    yearlyPrice: 249,
+    monthlyPrice: 29,
+    yearlyPrice: 30,
     features: [
       '每月 50 份合同分析',
       '基础风险识别',
@@ -32,7 +32,7 @@ const plans = [
     name: '商业版',
     description: '适合中型法律团队',
     monthlyPrice: 999,
-    yearlyPrice: 799,
+    yearlyPrice: 100,
     features: [
       '无限合同分析',
       '高级风险识别',
